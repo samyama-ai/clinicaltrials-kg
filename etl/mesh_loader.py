@@ -27,8 +27,8 @@ TENANT = "default"
 
 
 def _escape(value: str) -> str:
-    """Escape single quotes for Cypher string literals."""
-    return value.replace("\\", "\\\\").replace("'", "\\'")
+    """Strip double quotes and normalize whitespace for Cypher string literals."""
+    return value.replace('"', '').replace('\n', ' ').replace('\r', '')
 
 
 def _search_mesh(http: httpx.Client, condition_name: str) -> dict | None:
@@ -111,31 +111,31 @@ def _create_mesh_node(client: SamyamaClient, descriptor_id: str, fields: dict) -
     tree_arr = json.dumps(fields["tree_numbers"])
 
     query = (
-        f"MERGE (m:MeSHDescriptor {{descriptor_id: '{descriptor_id}'}}) "
-        f"SET m.name = '{name}', "
-        f"m.tree_numbers = '{_escape(tree_arr)}', "
-        f"m.scope_note = '{scope}'"
+        f'MERGE (m:MeSHDescriptor {{descriptor_id: "{descriptor_id}", '
+        f'name: "{name}", '
+        f'tree_numbers: "{_escape(tree_arr)}", '
+        f'scope_note: "{scope}"}})'
     )
-    client.query(TENANT, query)
+    client.query(query, TENANT)
 
 
 def _create_coded_as_mesh_edge(client: SamyamaClient, condition_name: str, descriptor_id: str) -> None:
     """Create CODED_AS_MESH edge from Condition to MeSHDescriptor."""
     query = (
-        f"MATCH (c:Condition {{name: '{_escape(condition_name)}'}}), "
-        f"(m:MeSHDescriptor {{descriptor_id: '{descriptor_id}'}}) "
-        f"MERGE (c)-[:CODED_AS_MESH]->(m)"
+        f'MATCH (c:Condition {{name: "{_escape(condition_name)}"}}), '
+        f'(m:MeSHDescriptor {{descriptor_id: "{descriptor_id}"}}) '
+        f'CREATE (c)-[:CODED_AS_MESH]->(m)'
     )
-    client.query(TENANT, query)
+    client.query(query, TENANT)
 
 
 def _update_condition_mesh_id(client: SamyamaClient, condition_name: str, descriptor_id: str) -> None:
     """Set the mesh_id property on the Condition node."""
     query = (
-        f"MATCH (c:Condition {{name: '{_escape(condition_name)}'}}) "
-        f"SET c.mesh_id = '{descriptor_id}'"
+        f'MATCH (c:Condition {{name: "{_escape(condition_name)}"}}) '
+        f'SET c.mesh_id = "{descriptor_id}"'
     )
-    client.query(TENANT, query)
+    client.query(query, TENANT)
 
 
 def _get_parent_tree_number(tree_number: str) -> str | None:
@@ -202,11 +202,11 @@ def _build_broader_hierarchy(
 
         # Create BROADER_THAN edge: parent -[:BROADER_THAN]-> child
         query = (
-            f"MATCH (parent:MeSHDescriptor {{descriptor_id: '{parent_id}'}}), "
-            f"(child:MeSHDescriptor {{descriptor_id: '{descriptor_id}'}}) "
-            f"MERGE (parent)-[:BROADER_THAN]->(child)"
+            f'MATCH (parent:MeSHDescriptor {{descriptor_id: "{parent_id}"}}), '
+            f'(child:MeSHDescriptor {{descriptor_id: "{descriptor_id}"}}) '
+            f'CREATE (parent)-[:BROADER_THAN]->(child)'
         )
-        client.query(TENANT, query)
+        client.query(query, TENANT)
 
 
 def load_mesh(client: SamyamaClient) -> dict:
@@ -225,10 +225,10 @@ def load_mesh(client: SamyamaClient) -> dict:
 
     # Find conditions without MeSH mapping
     rows = client.query_readonly(
-        TENANT,
         "MATCH (c:Condition) WHERE c.mesh_id IS NULL RETURN c.name",
+        TENANT,
     )
-    condition_names = [row[0] for row in rows if row[0]]
+    condition_names = [row[0] for row in rows.records if row[0]]
     print(f"[MeSH Loader] Found {len(condition_names)} unmapped conditions")
 
     stats = {"conditions_processed": 0, "mesh_nodes_created": 0, "edges_created": 0, "skipped": 0}

@@ -57,12 +57,12 @@ def _embed_trials(client: SamyamaClient, model: SentenceTransformer) -> int:
     print("\nEmbedding ClinicalTrial nodes (brief_summary)...")
 
     rows = client.query_readonly(
+        "MATCH (t:ClinicalTrial) RETURN id(t), t.brief_summary",
         "default",
-        "MATCH (t:ClinicalTrial) RETURN id(t), t.brief_summary"
     )
 
     # Filter out trials with no summary
-    trials = [(row[0], row[1]) for row in rows if row and row[1]]
+    trials = [(row[0], row[1]) for row in rows.records if row and row[1]]
     total = len(trials)
     print(f"  Found {total} trials with brief_summary.")
 
@@ -103,12 +103,12 @@ def _embed_conditions(client: SamyamaClient, model: SentenceTransformer) -> int:
     print("\nEmbedding Condition nodes (name)...")
 
     rows = client.query_readonly(
+        "MATCH (c:Condition) RETURN id(c), c.name",
         "default",
-        "MATCH (c:Condition) RETURN id(c), c.name"
     )
 
     # Filter out conditions with no name
-    conditions = [(row[0], row[1]) for row in rows if row and row[1]]
+    conditions = [(row[0], row[1]) for row in rows.records if row and row[1]]
     total = len(conditions)
     print(f"  Found {total} conditions with name.")
 

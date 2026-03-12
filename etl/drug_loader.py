@@ -35,8 +35,8 @@ TENANT = "default"
 
 
 def _escape(value: str) -> str:
-    """Escape single quotes for Cypher string literals."""
-    return value.replace("\\", "\\\\").replace("'", "\\'")
+    """Strip double quotes and normalize whitespace for Cypher string literals."""
+    return value.replace('"', '').replace('\n', ' ').replace('\r', '')
 
 
 # ---------------------------------------------------------------------------
@@ -174,20 +174,20 @@ def _create_atc_hierarchy(
             # For the leaf level, use the drug name; otherwise use the level description
             display_name = drug_name if level == 5 else f"{current} ({level_name})"
             query = (
-                f"MERGE (dc:DrugClass {{atc_code: '{_escape(current)}'}}) "
-                f"SET dc.name = '{_escape(display_name)}', dc.level = {level}"
+                f'MERGE (dc:DrugClass {{atc_code: "{_escape(current)}", '
+                f'name: "{_escape(display_name)}", level: {level}}})'
             )
-            client.query(TENANT, query)
+            client.query(query, TENANT)
             seen_classes.add(current)
 
         # Create PARENT_CLASS edge from child to parent (child -> parent)
         if child_code is not None:
             query = (
-                f"MATCH (child:DrugClass {{atc_code: '{_escape(child_code)}'}}), "
-                f"(parent:DrugClass {{atc_code: '{_escape(current)}'}}) "
-                f"MERGE (child)-[:PARENT_CLASS]->(parent)"
+                f'MATCH (child:DrugClass {{atc_code: "{_escape(child_code)}"}}), '
+                f'(parent:DrugClass {{atc_code: "{_escape(current)}"}}) '
+                f'CREATE (child)-[:PARENT_CLASS]->(parent)'
             )
-            client.query(TENANT, query)
+            client.query(query, TENANT)
 
         child_code = current
         current = _atc_parent(current)
@@ -242,19 +242,19 @@ def _create_adverse_events(
         # Create or merge AdverseEvent node
         if term not in seen_events:
             query = (
-                f"MERGE (ae:AdverseEvent {{term: '{_escape(term)}'}}) "
-                f"SET ae.source_vocabulary = 'MedDRA'"
+                f'MERGE (ae:AdverseEvent {{term: "{_escape(term)}", '
+                f'source_vocabulary: "MedDRA"}})'
             )
-            client.query(TENANT, query)
+            client.query(query, TENANT)
             seen_events.add(term)
 
         # Create HAS_ADVERSE_EFFECT edge
         query = (
-            f"MATCH (d:Drug {{rxnorm_cui: '{_escape(rxnorm_cui)}'}}), "
-            f"(ae:AdverseEvent {{term: '{_escape(term)}'}}) "
-            f"MERGE (d)-[:HAS_ADVERSE_EFFECT]->(ae)"
+            f'MATCH (d:Drug {{rxnorm_cui: "{_escape(rxnorm_cui)}"}}), '
+            f'(ae:AdverseEvent {{term: "{_escape(term)}"}}) '
+            f'CREATE (d)-[:HAS_ADVERSE_EFFECT]->(ae)'
         )
-        client.query(TENANT, query)
+        client.query(query, TENANT)
         count += 1
 
     return count
@@ -280,10 +280,10 @@ def load_drugs(client: SamyamaClient) -> dict:
 
     # Step 1: Find drug interventions without RxNorm mapping
     rows = client.query_readonly(
-        TENANT,
         "MATCH (i:Intervention) WHERE i.type = 'DRUG' AND i.rxnorm_cui IS NULL RETURN i.name",
+        TENANT,
     )
-    drug_names = [row[0] for row in rows if row[0]]
+    drug_names = [row[0] for row in rows.records if row[0]]
     print(f"[Drug Loader] Found {len(drug_names)} unmapped drug interventions")
 
     stats = {
@@ -318,30 +318,28 @@ def load_drugs(client: SamyamaClient) -> dict:
             if rxcui not in seen_drugs:
                 rx_name = _fetch_rxnorm_name(http, rxcui) or drug_name
                 time.sleep(RXNORM_DELAY)
-                query = (
-                    f"MERGE (d:Drug {{rxnorm_cui: '{_escape(rxcui)}'}}) "
-                    f"SET d.name = '{_escape(rx_name)}'"
-                )
+                props = f'rxnorm_cui: "{_escape(rxcui)}", name: "{_escape(rx_name)}"'
                 if drugbank_id:
-                    query += f", d.drugbank_id = '{_escape(drugbank_id)}'"
-                client.query(TENANT, query)
+                    props += f', drugbank_id: "{_escape(drugbank_id)}"'
+                query = f'MERGE (d:Drug {{{props}}})'
+                client.query(query, TENANT)
                 seen_drugs.add(rxcui)
                 stats["drug_nodes_created"] += 1
 
             # Step 3c: Create CODED_AS_DRUG edge from Intervention to Drug
             query = (
-                f"MATCH (i:Intervention {{name: '{_escape(drug_name)}'}}), "
-                f"(d:Drug {{rxnorm_cui: '{_escape(rxcui)}'}}) "
-                f"MERGE (i)-[:CODED_AS_DRUG]->(d)"
+                f'MATCH (i:Intervention {{name: "{_escape(drug_name)}"}}), '
+                f'(d:Drug {{rxnorm_cui: "{_escape(rxcui)}"}}) '
+                f'CREATE (i)-[:CODED_AS_DRUG]->(d)'
             )
-            client.query(TENANT, query)
+            client.query(query, TENANT)
 
             # Step 3d: Update Intervention with rxnorm_cui
             query = (
-                f"MATCH (i:Intervention {{name: '{_escape(drug_name)}'}}) "
-                f"SET i.rxnorm_cui = '{_escape(rxcui)}'"
+                f'MATCH (i:Intervention {{name: "{_escape(drug_name)}"}}) '
+                f'SET i.rxnorm_cui = "{_escape(rxcui)}"'
             )
-            client.query(TENANT, query)
+            client.query(query, TENANT)
 
             # Step 4: ATC classification
             atc_code = _extract_atc_code(properties)
@@ -352,11 +350,11 @@ def load_drugs(client: SamyamaClient) -> dict:
 
                 # Create CLASSIFIED_AS edge from Drug to its leaf DrugClass
                 query = (
-                    f"MATCH (d:Drug {{rxnorm_cui: '{_escape(rxcui)}'}}), "
-                    f"(dc:DrugClass {{atc_code: '{_escape(atc_code)}'}}) "
-                    f"MERGE (d)-[:CLASSIFIED_AS]->(dc)"
+                    f'MATCH (d:Drug {{rxnorm_cui: "{_escape(rxcui)}"}}), '
+                    f'(dc:DrugClass {{atc_code: "{_escape(atc_code)}"}}) '
+                    f'CREATE (d)-[:CLASSIFIED_AS]->(dc)'
                 )
-                client.query(TENANT, query)
+                client.query(query, TENANT)
             else:
                 print(f"    No ATC code found for rxcui={rxcui}")
 

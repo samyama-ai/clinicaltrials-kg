@@ -123,8 +123,8 @@ def fetch_article_summaries(
 
 
 def _escape_cypher_string(s: str) -> str:
-    """Escape single quotes and backslashes for Cypher string literals."""
-    return s.replace("\\", "\\\\").replace("'", "\\'")
+    """Strip double quotes and normalize whitespace for Cypher string literals."""
+    return s.replace('"', '').replace('\n', ' ').replace('\r', '')
 
 
 def create_publication_node(client: SamyamaClient, pmid: str, meta: dict) -> None:
@@ -136,15 +136,14 @@ def create_publication_node(client: SamyamaClient, pmid: str, meta: dict) -> Non
     doi = _escape_cypher_string(meta.get("doi", ""))
 
     query = (
-        f"MERGE (p:Publication {{pmid: '{pmid}'}}) "
-        f"SET p.title = '{title}', "
-        f"p.authors = '{authors}', "
-        f"p.journal = '{journal}', "
-        f"p.pub_date = '{pub_date}', "
-        f"p.doi = '{doi}' "
-        f"RETURN p.pmid"
+        f'MERGE (p:Publication {{pmid: "{pmid}", '
+        f'title: "{title}", '
+        f'authors: "{authors}", '
+        f'journal: "{journal}", '
+        f'pub_date: "{pub_date}", '
+        f'doi: "{doi}"}})'
     )
-    client.query("default", query)
+    client.query(query, "default")
 
 
 def create_publication_edges(
@@ -153,19 +152,19 @@ def create_publication_edges(
     """Create PUBLISHED_IN (trial -> pub) and DESCRIBES (pub -> trial) edges."""
     # PUBLISHED_IN: trial -> publication
     q1 = (
-        f"MATCH (t:ClinicalTrial {{nct_id: '{nct_id}'}}), "
-        f"(p:Publication {{pmid: '{pmid}'}}) "
-        f"MERGE (t)-[:PUBLISHED_IN]->(p)"
+        f'MATCH (t:ClinicalTrial {{nct_id: "{nct_id}"}}), '
+        f'(p:Publication {{pmid: "{pmid}"}}) '
+        f'CREATE (t)-[:PUBLISHED_IN]->(p)'
     )
-    client.query("default", q1)
+    client.query(q1, "default")
 
     # DESCRIBES: publication -> trial
     q2 = (
-        f"MATCH (p:Publication {{pmid: '{pmid}'}}), "
-        f"(t:ClinicalTrial {{nct_id: '{nct_id}'}}) "
-        f"MERGE (p)-[:DESCRIBES]->(t)"
+        f'MATCH (p:Publication {{pmid: "{pmid}"}}), '
+        f'(t:ClinicalTrial {{nct_id: "{nct_id}"}}) '
+        f'CREATE (p)-[:DESCRIBES]->(t)'
     )
-    client.query("default", q2)
+    client.query(q2, "default")
 
 
 def load_publications(
@@ -190,8 +189,8 @@ def load_publications(
     delay = _rate_delay(api_key)
 
     # Fetch all trial NCT IDs
-    rows = client.query_readonly("default", "MATCH (t:ClinicalTrial) RETURN t.nct_id")
-    nct_ids = [row[0] for row in rows if row and row[0]]
+    rows = client.query_readonly("MATCH (t:ClinicalTrial) RETURN t.nct_id", "default")
+    nct_ids = [row[0] for row in rows.records if row and row[0]]
     print(f"Found {len(nct_ids)} clinical trials to process.")
 
     seen_pmids: set[str] = set()

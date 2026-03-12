@@ -13,7 +13,7 @@ Usage:
 """
 
 from samyama import SamyamaClient
-import httpx
+import requests
 import json
 import os
 import time
@@ -27,11 +27,14 @@ GRAPH = "default"
 
 
 def _escape(value: str) -> str:
-    """Escape a string for safe embedding in a Cypher literal."""
+    """Sanitize a string for Cypher double-quoted literals.
+
+    Samyama's parser has no escape sequences in strings, so we strip
+    double quotes and normalize whitespace.
+    """
     if value is None:
         return ""
-    return (value.replace("\\", "\\\\").replace("'", "\\'")
-            .replace("\n", " ").replace("\r", ""))
+    return value.replace('"', '').replace("\n", " ").replace("\r", "")
 
 
 def _prop_str(props: dict) -> str:
@@ -41,21 +44,12 @@ def _prop_str(props: dict) -> str:
         if val is None:
             continue
         if isinstance(val, bool):
-            parts.append(f"{key}: {'true' if val else 'false'}")
+            parts.append(f'{key}: "{"true" if val else "false"}"')
         elif isinstance(val, (int, float)):
             parts.append(f"{key}: {val}")
         else:
-            parts.append(f"{key}: '{_escape(str(val))}'")
+            parts.append(f'{key}: "{_escape(str(val))}"')
     return "{" + ", ".join(parts) + "}"
-
-
-def _extract_id(result) -> int | None:
-    """Pull the node id from a QueryResult returned by client.query()."""
-    if result and len(result) > 0:
-        row = result.records[0]
-        if row:
-            return int(row[0])
-    return None
 
 
 # -- API fetching with disk cache -------------------------------------------
@@ -66,7 +60,7 @@ def _cache_path(condition: str, page_token: str | None) -> Path:
     return CACHE_DIR / f"{safe}_{token}.json"
 
 
-def _fetch_page(http: httpx.Client, condition: str, page_size: int,
+def _fetch_page(session: requests.Session, condition: str, page_size: int,
                 page_token: str | None, include_results: bool) -> dict:
     cache = _cache_path(condition, page_token)
     if cache.exists():
@@ -81,7 +75,7 @@ def _fetch_page(http: httpx.Client, condition: str, page_size: int,
     if page_token:
         params["pageToken"] = page_token
 
-    resp = http.get(API_BASE, params=params, timeout=30.0)
+    resp = session.get(API_BASE, params=params, timeout=30.0)
     resp.raise_for_status()
     data = resp.json()
 
@@ -96,9 +90,9 @@ def fetch_studies(condition: str, max_trials: int, include_results: bool) -> lis
     """Fetch up to *max_trials* studies for a condition, handling pagination."""
     studies: list[dict] = []
     page_token: str | None = None
-    with httpx.Client() as http:
+    with requests.Session() as session:
         while len(studies) < max_trials:
-            data = _fetch_page(http, condition, min(PAGE_SIZE, max_trials - len(studies)),
+            data = _fetch_page(session, condition, min(PAGE_SIZE, max_trials - len(studies)),
                                page_token, include_results)
             batch = data.get("studies", [])
             if not batch:
@@ -129,7 +123,26 @@ class _Registry:
 
 # -- Node helpers ------------------------------------------------------------
 
-def _create_trial(client: SamyamaClient, study: dict) -> int | None:
+def _q(val: str) -> str:
+    """Quote and escape a value for inline Cypher property matching."""
+    return f'"{_escape(val)}"'
+
+
+def _merge_node(client: SamyamaClient, label: str, props: dict) -> None:
+    """MERGE a node with the given properties (first prop is the key)."""
+    client.query(f"MERGE (n:{label} {_prop_str(props)})", GRAPH)
+
+
+def _merge_edge(client: SamyamaClient, src_label: str, src_match: str,
+                rel: str, tgt_label: str, tgt_match: str) -> None:
+    """Create edge between two nodes matched by property predicates."""
+    q = (f"MATCH (a:{src_label} {{{src_match}}}), (b:{tgt_label} {{{tgt_match}}}) "
+         f"CREATE (a)-[:{rel}]->(b)")
+    client.query(q, GRAPH)
+
+
+def _create_trial(client: SamyamaClient, study: dict) -> str | None:
+    """MERGE a ClinicalTrial node. Returns nct_id or None."""
     proto = study.get("protocolSection", {})
     ident = proto.get("identificationModule", {})
     status = proto.get("statusModule", {})
@@ -156,176 +169,178 @@ def _create_trial(client: SamyamaClient, study: dict) -> int | None:
         "completion_date": status.get("completionDateStruct", {}).get("date"),
         "primary_completion_date": status.get("primaryCompletionDateStruct", {}).get("date"),
         "last_updated": status.get("lastUpdatePostDateStruct", {}).get("date"),
-        "has_results": study.get("hasResults", False),
+        "has_results": str(study.get("hasResults", False)).lower(),
         "why_stopped": status.get("whyStopped"),
     }
-    return _extract_id(client.query(f"CREATE (t:ClinicalTrial {_prop_str(props)}) RETURN id(t)", GRAPH))
+    _merge_node(client, "ClinicalTrial", props)
+    return nct_id
 
 
-def _get_or_create(client: SamyamaClient, reg: _Registry, key: str,
-                   label: str, props: dict) -> int | None:
-    """Generic get-or-create: return cached id or create node and cache it."""
-    if not key:
-        return None
-    existing = reg.get(key)
-    if existing is not None:
-        return existing
-    nid = _extract_id(client.query(f"CREATE (n:{label} {_prop_str(props)}) RETURN id(n)", GRAPH))
-    if nid is not None:
-        reg.put(key, nid)
-    return nid
+def _trial_match(nct_id: str) -> str:
+    return f'nct_id: "{_escape(nct_id)}"'
 
 
-def _get_or_create_condition(client, reg, name):
-    return _get_or_create(client, reg, name, "Condition", {"name": name})
+def _ensure_condition(client, seen: set, name: str) -> None:
+    if not name or name.lower() in seen:
+        return
+    _merge_node(client, "Condition", {"name": name})
+    seen.add(name.lower())
 
 
-def _get_or_create_intervention(client, reg, interv: dict):
+def _ensure_intervention(client, seen: set, interv: dict) -> None:
     name = interv.get("name", "")
-    return _get_or_create(client, reg, name, "Intervention", {
+    if not name or name.lower() in seen:
+        return
+    _merge_node(client, "Intervention", {
         "name": name, "type": interv.get("type"),
         "description": (interv.get("description") or "")[:300],
     })
+    seen.add(name.lower())
 
 
-def _get_or_create_sponsor(client, reg, sponsor: dict):
+def _ensure_sponsor(client, seen: set, sponsor: dict) -> None:
     name = sponsor.get("name", "")
-    return _get_or_create(client, reg, name, "Sponsor", {
-        "name": name, "class": sponsor.get("class"),
-    })
+    if not name or name.lower() in seen:
+        return
+    _merge_node(client, "Sponsor", {"name": name, "class": sponsor.get("class")})
+    seen.add(name.lower())
 
 
-def _get_or_create_site(client, reg, loc: dict):
-    facility, city = loc.get("facility", ""), loc.get("city", "")
-    key = f"{facility}|{city}".strip("|")
+def _ensure_site(client, seen: set, loc: dict) -> None:
+    facility = loc.get("facility", "")
+    city = loc.get("city", "")
+    key = f"{facility}|{city}".strip("|").lower()
+    if not key or key in seen:
+        return
     geo = loc.get("geoPoint", {}) or {}
-    return _get_or_create(client, reg, key, "Site", {
+    _merge_node(client, "Site", {
         "facility": facility or None, "city": city or None,
         "state": loc.get("state"), "country": loc.get("country"),
         "zip": loc.get("zip"),
         "latitude": geo.get("lat"), "longitude": geo.get("lon"),
     })
-
-
-def _create_arm(client, arm: dict) -> int | None:
-    if not arm.get("label"):
-        return None
-    props = {"label": arm["label"], "type": arm.get("type"),
-             "description": (arm.get("description") or "")[:300]}
-    return _extract_id(client.query(f"CREATE (a:ArmGroup {_prop_str(props)}) RETURN id(a)", GRAPH))
-
-
-def _create_outcome(client, outcome: dict, otype: str) -> int | None:
-    if not outcome.get("measure"):
-        return None
-    props = {"measure": outcome["measure"], "type": otype,
-             "description": (outcome.get("description") or "")[:300],
-             "time_frame": outcome.get("timeFrame")}
-    return _extract_id(client.query(f"CREATE (o:Outcome {_prop_str(props)}) RETURN id(o)", GRAPH))
-
-
-def _create_ae(client, event: dict, organ_system: str, is_serious: bool) -> int | None:
-    term = event.get("term", "")
-    if not term:
-        return None
-    stats = event.get("stats", []) or []
-    affected = stats[0].get("numAffected") if stats else None
-    at_risk = stats[0].get("numAtRisk") if stats else None
-    freq = round(int(affected) / int(at_risk), 4) if affected and at_risk and int(at_risk) > 0 else None
-    props = {"term": term, "organ_system": organ_system, "source_vocabulary": "MedDRA",
-             "num_affected": affected, "num_at_risk": at_risk,
-             "frequency": freq, "is_serious": is_serious}
-    return _extract_id(client.query(f"CREATE (ae:AdverseEvent {_prop_str(props)}) RETURN id(ae)", GRAPH))
-
-
-def _edge(client, src: int, rel: str, tgt: int) -> None:
-    client.query(f"MATCH (a),(b) WHERE id(a) = {src} AND id(b) = {tgt} CREATE (a)-[:{rel}]->(b)", GRAPH)
+    seen.add(key)
 
 
 # -- Per-study ingestion -----------------------------------------------------
 
-def _ingest_study(client, study, cond_reg, interv_reg, sponsor_reg, site_reg,
+def _ingest_study(client, study, cond_seen, interv_seen, sponsor_seen, site_seen,
                   include_results, counts):
-    trial_id = _create_trial(client, study)
-    if trial_id is None:
+    nct_id = _create_trial(client, study)
+    if nct_id is None:
         return
     counts["trials"] += 1
     proto = study.get("protocolSection", {})
+    tm = _trial_match(nct_id)
 
     # Conditions
     for name in proto.get("conditionsModule", {}).get("conditions", []):
-        cid = _get_or_create_condition(client, cond_reg, name)
-        if cid is not None:
-            _edge(client, trial_id, "STUDIES", cid)
-            counts["edges"] += 1
+        if not name:
+            continue
+        _ensure_condition(client, cond_seen, name)
+        _merge_edge(client, "ClinicalTrial", tm, "STUDIES", "Condition", f"name: {_q(name)}")
+        counts["edges"] += 1
 
     # Arms and interventions
     arms_mod = proto.get("armsInterventionsModule", {})
-    arm_ids: dict[str, int] = {}
     for arm in arms_mod.get("armGroups", []):
-        aid = _create_arm(client, arm)
-        if aid is not None:
-            counts["arms"] += 1
-            _edge(client, trial_id, "HAS_ARM", aid)
-            counts["edges"] += 1
-            if arm.get("label"):
-                arm_ids[arm["label"]] = aid
+        label = arm.get("label", "")
+        if not label:
+            continue
+        arm_props = {"label": label, "type": arm.get("type"),
+                     "description": (arm.get("description") or "")[:300],
+                     "trial_nct_id": nct_id}
+        _merge_node(client, "ArmGroup", arm_props)
+        counts["arms"] += 1
+        _merge_edge(client, "ClinicalTrial", tm, "HAS_ARM", "ArmGroup",
+                    f"label: {_q(label)}, trial_nct_id: {_q(nct_id)}")
+        counts["edges"] += 1
 
     for interv in arms_mod.get("interventions", []):
-        iid = _get_or_create_intervention(client, interv_reg, interv)
-        if iid is not None:
-            _edge(client, trial_id, "TESTS", iid)
+        iname = interv.get("name", "")
+        if not iname:
+            continue
+        _ensure_intervention(client, interv_seen, interv)
+        _merge_edge(client, "ClinicalTrial", tm, "TESTS", "Intervention", f"name: {_q(iname)}")
+        counts["edges"] += 1
+        for lbl in interv.get("armGroupLabels", []):
+            _merge_edge(client, "ArmGroup",
+                        f"label: {_q(lbl)}, trial_nct_id: {_q(nct_id)}",
+                        "USES", "Intervention", f"name: {_q(iname)}")
             counts["edges"] += 1
-            for lbl in interv.get("armGroupLabels", []):
-                if lbl in arm_ids:
-                    _edge(client, arm_ids[lbl], "USES", iid)
-                    counts["edges"] += 1
 
     # Sponsor
     lead = proto.get("sponsorCollaboratorsModule", {}).get("leadSponsor", {})
-    if lead:
-        sid = _get_or_create_sponsor(client, sponsor_reg, lead)
-        if sid is not None:
-            _edge(client, trial_id, "SPONSORED_BY", sid)
-            counts["edges"] += 1
+    if lead and lead.get("name"):
+        _ensure_sponsor(client, sponsor_seen, lead)
+        _merge_edge(client, "ClinicalTrial", tm, "SPONSORED_BY", "Sponsor",
+                    f"name: {_q(lead['name'])}")
+        counts["edges"] += 1
 
     # Sites
     for loc in proto.get("contactsLocationsModule", {}).get("locations", []):
-        sid = _get_or_create_site(client, site_reg, loc)
-        if sid is not None:
-            _edge(client, trial_id, "CONDUCTED_AT", sid)
-            counts["edges"] += 1
+        facility = loc.get("facility", "")
+        city = loc.get("city", "")
+        if not facility and not city:
+            continue
+        _ensure_site(client, site_seen, loc)
+        if facility:
+            site_match = f"facility: {_q(facility)}"
+        else:
+            site_match = f"city: {_q(city)}"
+        _merge_edge(client, "ClinicalTrial", tm, "CONDUCTED_AT", "Site", site_match)
+        counts["edges"] += 1
 
     # Outcomes
     outcomes_mod = proto.get("outcomesModule", {})
     for oc in outcomes_mod.get("primaryOutcomes", []):
-        oid = _create_outcome(client, oc, "PRIMARY")
-        if oid is not None:
-            counts["outcomes"] += 1
-            _edge(client, trial_id, "MEASURES", oid)
-            counts["edges"] += 1
+        measure = oc.get("measure", "")
+        if not measure:
+            continue
+        _merge_node(client, "Outcome", {"measure": measure, "type": "PRIMARY",
+                    "description": (oc.get("description") or "")[:300],
+                    "time_frame": oc.get("timeFrame"), "trial_nct_id": nct_id})
+        counts["outcomes"] += 1
+        _merge_edge(client, "ClinicalTrial", tm, "MEASURES", "Outcome",
+                    f"measure: {_q(measure)}, trial_nct_id: {_q(nct_id)}")
+        counts["edges"] += 1
     for oc in outcomes_mod.get("secondaryOutcomes", []):
-        oid = _create_outcome(client, oc, "SECONDARY")
-        if oid is not None:
-            counts["outcomes"] += 1
-            _edge(client, trial_id, "MEASURES", oid)
-            counts["edges"] += 1
+        measure = oc.get("measure", "")
+        if not measure:
+            continue
+        _merge_node(client, "Outcome", {"measure": measure, "type": "SECONDARY",
+                    "description": (oc.get("description") or "")[:300],
+                    "time_frame": oc.get("timeFrame"), "trial_nct_id": nct_id})
+        counts["outcomes"] += 1
+        _merge_edge(client, "ClinicalTrial", tm, "MEASURES", "Outcome",
+                    f"measure: {_q(measure)}, trial_nct_id: {_q(nct_id)}")
+        counts["edges"] += 1
 
     # Adverse events (results section)
     if include_results and study.get("hasResults"):
         ae_mod = study.get("resultsSection", {}).get("adverseEventsModule", {})
         for eg in ae_mod.get("seriousEvents", []):
-            ae_id = _create_ae(client, eg, eg.get("organSystem", ""), True)
-            if ae_id is not None:
-                counts["adverse_events"] += 1
-                _edge(client, trial_id, "REPORTED", ae_id)
-                counts["edges"] += 1
+            term = eg.get("term", "")
+            if not term:
+                continue
+            _merge_node(client, "AdverseEvent", {"term": term,
+                        "organ_system": eg.get("organSystem", ""),
+                        "source_vocabulary": "MedDRA"})
+            counts["adverse_events"] += 1
+            _merge_edge(client, "ClinicalTrial", tm, "REPORTED", "AdverseEvent",
+                        f"term: {_q(term)}")
+            counts["edges"] += 1
         for eg in ae_mod.get("otherEvents", []):
-            ae_id = _create_ae(client, eg, eg.get("organSystem", ""), False)
-            if ae_id is not None:
-                counts["adverse_events"] += 1
-                _edge(client, trial_id, "REPORTED", ae_id)
-                counts["edges"] += 1
+            term = eg.get("term", "")
+            if not term:
+                continue
+            _merge_node(client, "AdverseEvent", {"term": term,
+                        "organ_system": eg.get("organSystem", ""),
+                        "source_vocabulary": "MedDRA"})
+            counts["adverse_events"] += 1
+            _merge_edge(client, "ClinicalTrial", tm, "REPORTED", "AdverseEvent",
+                        f"term: {_q(term)}")
+            counts["edges"] += 1
 
 
 # -- Public entry point ------------------------------------------------------
@@ -348,7 +363,7 @@ def load_trials(
     Returns:
         Dict of entity and relationship counts.
     """
-    cond_reg, interv_reg, sponsor_reg, site_reg = _Registry(), _Registry(), _Registry(), _Registry()
+    cond_seen, interv_seen, sponsor_seen, site_seen = set(), set(), set(), set()
     counts = {"trials": 0, "conditions": 0, "interventions": 0, "sponsors": 0,
               "sites": 0, "arms": 0, "outcomes": 0, "adverse_events": 0, "edges": 0}
     t0 = time.time()
@@ -357,15 +372,15 @@ def load_trials(
         print(f"\n{'='*60}\nFetching trials for: {term}\n{'='*60}")
         try:
             studies = fetch_studies(term, max_trials, include_results)
-        except httpx.HTTPError as exc:
+        except requests.RequestException as exc:
             print(f"  ERROR fetching '{term}': {exc}")
             continue
 
         print(f"  Retrieved {len(studies)} studies from API")
         for idx, study in enumerate(studies):
             try:
-                _ingest_study(client, study, cond_reg, interv_reg,
-                              sponsor_reg, site_reg, include_results, counts)
+                _ingest_study(client, study, cond_seen, interv_seen,
+                              sponsor_seen, site_seen, include_results, counts)
             except Exception as exc:
                 nct = (study.get("protocolSection", {})
                        .get("identificationModule", {}).get("nctId", "unknown"))
@@ -375,10 +390,10 @@ def load_trials(
                 print(f"  ... ingested {idx + 1}/{len(studies)} studies")
         print(f"  Done — {len(studies)} studies processed for '{term}'")
 
-    counts["conditions"] = len(cond_reg)
-    counts["interventions"] = len(interv_reg)
-    counts["sponsors"] = len(sponsor_reg)
-    counts["sites"] = len(site_reg)
+    counts["conditions"] = len(cond_seen)
+    counts["interventions"] = len(interv_seen)
+    counts["sponsors"] = len(sponsor_seen)
+    counts["sites"] = len(site_seen)
     elapsed = time.time() - t0
 
     print(f"\n{'='*60}\nLoad complete\n{'='*60}")

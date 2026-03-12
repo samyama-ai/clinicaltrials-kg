@@ -47,59 +47,53 @@ def main(conditions, max_trials, include_results, skip_embeddings, pubmed_api_ke
 
     # Initialise embedded graph client
     client = SamyamaClient.embedded()
-    tenant = "default"
-    print(f"Initialised Samyama (embedded mode)")
+    print("Initialised Samyama (embedded mode)")
 
     # Step 1 -- Load trials from ClinicalTrials.gov
     print(f"\n=== Step 1/5: Loading trials for {len(conditions)} conditions ===")
-    trial_count = 0
-    for condition in conditions:
-        n = load_trials(
-            client,
-            tenant,
-            condition=condition,
-            max_trials=max_trials,
-            include_results=include_results,
-        )
-        trial_count += n
-        print(f"  {condition}: {n} trials loaded")
-    print(f"  Total trials: {trial_count}")
+    trial_counts = load_trials(
+        client,
+        conditions=list(conditions),
+        max_trials=max_trials,
+        include_results=include_results,
+    )
+    print(f"  Total trials: {trial_counts['trials']}")
 
     # Step 2 -- Enrich with MeSH hierarchy
     print("\n=== Step 2/5: Enriching with MeSH hierarchy ===")
-    mesh_count = load_mesh(client, tenant)
-    print(f"  MeSH terms linked: {mesh_count}")
+    mesh_counts = load_mesh(client)
+    print(f"  MeSH descriptors: {mesh_counts.get('descriptors', 0)}")
 
     # Step 3 -- Normalise drugs via RxNorm + ATC + OpenFDA adverse events
     print("\n=== Step 3/5: Normalising drugs (RxNorm / ATC / OpenFDA) ===")
-    drug_count = load_drugs(client, tenant, include_adverse_events=include_results)
-    print(f"  Drugs normalised: {drug_count}")
+    drug_counts = load_drugs(client)
+    print(f"  Drugs normalised: {drug_counts.get('drugs_normalised', 0)}")
 
     # Step 4 -- Link publications from PubMed
     print("\n=== Step 4/5: Linking PubMed publications ===")
-    pub_count = load_publications(client, tenant, api_key=pubmed_api_key)
-    print(f"  Publications linked: {pub_count}")
+    pub_counts = load_publications(client, api_key=pubmed_api_key)
+    print(f"  Publications linked: {pub_counts.get('publications', 0)}")
 
     # Step 5 -- Generate vector embeddings
     if skip_embeddings:
         print("\n=== Step 5/5: Skipping embedding generation (--skip-embeddings) ===")
     else:
         print("\n=== Step 5/5: Generating vector embeddings ===")
-        emb_count = generate_embeddings(client, tenant)
-        print(f"  Embeddings generated: {emb_count}")
+        emb_counts = generate_embeddings(client)
+        print(f"  Embeddings generated: {emb_counts.get('embeddings', 0)}")
 
     elapsed = time.time() - t0
 
     # Print final graph statistics
-    stats = client.query_readonly(
-        tenant,
+    graph_stats = client.query_readonly(
         "MATCH (n) RETURN labels(n)[0] AS label, count(n) AS cnt ORDER BY cnt DESC",
+        "default",
     )
     print(f"\n{'='*50}")
     print(f"ETL complete in {elapsed:.1f}s")
-    print(f"Graph statistics:")
-    for row in stats:
-        print(f"  {row['label']}: {row['cnt']}")
+    print("Graph statistics:")
+    for row in graph_stats.records:
+        print(f"  {row[0]}: {row[1]}")
     print(f"{'='*50}")
 
 
