@@ -1,0 +1,56 @@
+[
+  {
+    "id": "trial_landscape_001",
+    "category": "trial_landscape",
+    "description": "How many Phase 3 diabetes trials are currently recruiting?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["Phase 3", "diabetes", "recruiting"],
+    "difficulty": "easy",
+    "requires_graph": false
+  },
+  {
+    "id": "trial_landscape_002",
+    "category": "trial_landscape",
+    "description": "Which sponsors have the most active Alzheimer trials?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["sponsor", "Alzheimer", "trial"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "trial_landscape_003",
+    "category": "trial_landscape",
+    "description": "Show the distribution of trial phases for breast cancer interventions",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["Phase", "breast cancer", "distribution"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "trial_landscape_004",
+    "category": "trial_landscape",
+    "description": "What is the enrollment trend for heart failure trials over the past 5 years?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["heart failure", "enrollment", "trend"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "trial_landscape_005",
+    "category": "trial_landscape",
+    "description": "Which countries host the most COVID-19 clinical trials?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["country", "COVID-19", "trial"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "trial_landscape_006",
+    "category": "trial_landscape",
+    "description": "Compare industry vs NIH sponsorship for diabetes trials",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["industry", "NIH", "diabetes", "sponsor"],
+    "difficulty": "medium",
+    "requires_graph": true
+  }
+]

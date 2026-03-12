@@ -1,0 +1,47 @@
+[
+  {
+    "id": "eligibility_001",
+    "category": "eligibility_matching",
+    "description": "Find recruiting diabetes trials accepting patients aged 65-80",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["diabetes", "recruiting", "age", "65"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "eligibility_002",
+    "category": "eligibility_matching",
+    "description": "Which breast cancer trials exclude patients with cardiac history?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["breast cancer", "cardiac", "exclude"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "eligibility_003",
+    "category": "eligibility_matching",
+    "description": "List trials for Alzheimer that accept both male and female participants in Phase 2",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["Alzheimer", "Phase 2", "male", "female"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "eligibility_004",
+    "category": "eligibility_matching",
+    "description": "Find trials for heart failure that are recruiting in the United States",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["heart failure", "recruiting", "United States"],
+    "difficulty": "easy",
+    "requires_graph": true
+  },
+  {
+    "id": "eligibility_005",
+    "category": "eligibility_matching",
+    "description": "Which COVID-19 trials accept healthy volunteers?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["COVID-19", "healthy volunteer"],
+    "difficulty": "easy",
+    "requires_graph": false
+  }
+]

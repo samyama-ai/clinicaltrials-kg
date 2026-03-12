@@ -1,0 +1,47 @@
+[
+  {
+    "id": "outcome_001",
+    "category": "outcome_analysis",
+    "description": "What primary outcomes are measured in Phase 3 diabetes trials?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["primary outcome", "Phase 3", "diabetes"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "outcome_002",
+    "category": "outcome_analysis",
+    "description": "Find trials with HbA1c as a primary endpoint",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["HbA1c", "primary", "endpoint", "trial"],
+    "difficulty": "easy",
+    "requires_graph": false
+  },
+  {
+    "id": "outcome_003",
+    "category": "outcome_analysis",
+    "description": "Compare primary outcome measures across Alzheimer trials",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["primary outcome", "Alzheimer", "compare"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "outcome_004",
+    "category": "outcome_analysis",
+    "description": "Which lab tests (LOINC codes) are most commonly used in heart failure trials?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["LOINC", "heart failure", "lab test"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "outcome_005",
+    "category": "outcome_analysis",
+    "description": "Show outcome measures for trials sponsored by NIH vs industry",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["outcome", "NIH", "industry", "sponsor"],
+    "difficulty": "medium",
+    "requires_graph": true
+  }
+]

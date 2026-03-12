@@ -1,0 +1,47 @@
+[
+  {
+    "id": "geographic_001",
+    "category": "geographic_analysis",
+    "description": "Which cities host the most clinical trials across all conditions?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["city", "clinical trial", "most"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "geographic_002",
+    "category": "geographic_analysis",
+    "description": "Show the geographic distribution of Alzheimer trials in Europe",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["Alzheimer", "Europe", "distribution"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "geographic_003",
+    "category": "geographic_analysis",
+    "description": "Find trials conducted at more than 20 sites globally",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["trial", "site", "20"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "geographic_004",
+    "category": "geographic_analysis",
+    "description": "Which countries have the most recruiting trials for COVID-19?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["country", "recruiting", "COVID-19"],
+    "difficulty": "easy",
+    "requires_graph": true
+  },
+  {
+    "id": "geographic_005",
+    "category": "geographic_analysis",
+    "description": "Compare trial site counts between US and EU for breast cancer studies",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["US", "EU", "breast cancer", "site"],
+    "difficulty": "hard",
+    "requires_graph": true
+  }
+]

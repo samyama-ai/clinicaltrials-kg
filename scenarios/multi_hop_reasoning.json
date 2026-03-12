@@ -1,0 +1,65 @@
+[
+  {
+    "id": "multi_hop_001",
+    "category": "multi_hop_reasoning",
+    "description": "Which genes associated with Type 2 Diabetes are targets of drugs in active trials?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["gene", "Type 2 Diabetes", "drug", "target", "trial"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "multi_hop_002",
+    "category": "multi_hop_reasoning",
+    "description": "Find publications linked to completed trials that reported nausea as an adverse event",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["publication", "completed", "nausea", "adverse event"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "multi_hop_003",
+    "category": "multi_hop_reasoning",
+    "description": "What MeSH categories contain conditions with the most active trials?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["MeSH", "condition", "active", "trial"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "multi_hop_004",
+    "category": "multi_hop_reasoning",
+    "description": "Trace from drug class 'ACE inhibitors' to all trials testing drugs in that class",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["ACE inhibitor", "drug class", "trial"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "multi_hop_005",
+    "category": "multi_hop_reasoning",
+    "description": "Find sponsors who fund trials for conditions in the same MeSH subtree as Alzheimer",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["sponsor", "MeSH", "Alzheimer", "condition"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "multi_hop_006",
+    "category": "multi_hop_reasoning",
+    "description": "Which trial sites conducted studies on drugs that target the GLP1R protein?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["site", "GLP1R", "protein", "drug", "trial"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "multi_hop_007",
+    "category": "multi_hop_reasoning",
+    "description": "Connect adverse events reported in metformin trials to related MeSH terms",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["adverse event", "metformin", "MeSH"],
+    "difficulty": "medium",
+    "requires_graph": true
+  }
+]

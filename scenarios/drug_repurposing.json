@@ -1,0 +1,56 @@
+[
+  {
+    "id": "drug_repurposing_001",
+    "category": "drug_repurposing",
+    "description": "Which drugs approved for diabetes are being tested in Alzheimer trials?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["diabetes", "Alzheimer", "drug", "trial"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "drug_repurposing_002",
+    "category": "drug_repurposing",
+    "description": "Find trials repurposing cancer drugs for COVID-19",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["cancer", "COVID-19", "repurpos", "trial"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "drug_repurposing_003",
+    "category": "drug_repurposing",
+    "description": "What interventions are shared between heart failure and diabetes trials?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["heart failure", "diabetes", "intervention", "shared"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "drug_repurposing_004",
+    "category": "drug_repurposing",
+    "description": "Which drugs target proteins associated with both breast cancer and ovarian cancer?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["breast cancer", "ovarian cancer", "protein", "target"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "drug_repurposing_005",
+    "category": "drug_repurposing",
+    "description": "Find Phase 3 trials testing metformin for non-diabetes conditions",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["metformin", "Phase 3", "trial"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "drug_repurposing_006",
+    "category": "drug_repurposing",
+    "description": "What biologics used in rheumatoid arthritis are being studied for other autoimmune diseases?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["rheumatoid arthritis", "biologic", "autoimmune"],
+    "difficulty": "hard",
+    "requires_graph": true
+  }
+]

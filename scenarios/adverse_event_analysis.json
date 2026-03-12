@@ -1,0 +1,56 @@
+[
+  {
+    "id": "adverse_event_001",
+    "category": "adverse_event_analysis",
+    "description": "What are the most common serious adverse events reported in diabetes drug trials?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["adverse event", "diabetes", "serious"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "adverse_event_002",
+    "category": "adverse_event_analysis",
+    "description": "Compare adverse event profiles between metformin and insulin trials",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["metformin", "insulin", "adverse event", "compare"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "adverse_event_003",
+    "category": "adverse_event_analysis",
+    "description": "Which organ systems are most affected by breast cancer treatments?",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["breast cancer", "organ", "treatment"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "adverse_event_004",
+    "category": "adverse_event_analysis",
+    "description": "Find drugs with cardiac adverse events across all therapeutic areas",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["cardiac", "adverse event", "drug"],
+    "difficulty": "medium",
+    "requires_graph": true
+  },
+  {
+    "id": "adverse_event_005",
+    "category": "adverse_event_analysis",
+    "description": "What adverse events are shared between the top 3 Alzheimer drugs in trials?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["Alzheimer", "adverse event", "shared"],
+    "difficulty": "hard",
+    "requires_graph": true
+  },
+  {
+    "id": "adverse_event_006",
+    "category": "adverse_event_analysis",
+    "description": "Identify safety signals for COVID-19 treatments that led to trial termination",
+    "expected_tools": ["cypher_query", "search_trials"],
+    "expected_output_contains": ["COVID-19", "safety", "terminat"],
+    "difficulty": "hard",
+    "requires_graph": true
+  }
+]
