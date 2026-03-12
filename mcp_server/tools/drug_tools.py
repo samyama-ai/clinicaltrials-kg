@@ -11,25 +11,28 @@ def register_drug_tools(mcp: FastMCP):
     def drug_trials(drug_name: str) -> str:
         """Find all clinical trials testing a specific drug.
 
+        Traces from Drug nodes through Intervention nodes to ClinicalTrial nodes.
+
         Args:
             drug_name: Drug name (generic or brand, e.g. "Metformin").
 
         Returns:
             JSON array of trials with NCT ID, title, phase, and status.
         """
-        from mcp_server.server import client
+        from mcp_server.server import client, _escape, _to_dicts, GRAPH
 
+        safe_name = _escape(drug_name)
         cypher = (
-            "MATCH (t:Trial)-[:TESTS]->(d:Drug) "
-            "WHERE toLower(d.name) CONTAINS toLower($drug_name) "
-            "   OR toLower(d.generic_name) CONTAINS toLower($drug_name) "
-            "RETURN t.nct_id AS nct_id, t.brief_title AS title, "
-            "t.phase AS phase, t.overall_status AS status, "
-            "d.name AS drug "
-            "ORDER BY t.start_date DESC LIMIT 50"
+            f"MATCH (t:ClinicalTrial)-[:TESTS]->(i:Intervention)"
+            f"-[:CODED_AS_DRUG]->(d:Drug) "
+            f'WHERE d.name CONTAINS "{safe_name}" '
+            f"RETURN t.nct_id AS nct_id, t.title AS title, "
+            f"t.phase AS phase, t.overall_status AS status, "
+            f"d.name AS drug "
+            f"ORDER BY t.start_date DESC LIMIT 50"
         )
-        results = client.query_readonly("default", cypher, {"drug_name": drug_name})
-        return json.dumps(results, default=str)
+        results = client.query_readonly(cypher, GRAPH)
+        return json.dumps(_to_dicts(results), default=str)
 
     @mcp.tool()
     def drug_adverse_events(drug_name: str, limit: int = 20) -> str:
@@ -40,83 +43,71 @@ def register_drug_tools(mcp: FastMCP):
             limit: Maximum number of adverse events to return (default 20).
 
         Returns:
-            JSON array of adverse events with term, severity, and frequency count.
+            JSON array of adverse events with term and source vocabulary.
         """
-        from mcp_server.server import client
+        from mcp_server.server import client, _escape, _to_dicts, GRAPH
 
+        safe_name = _escape(drug_name)
         cypher = (
-            "MATCH (d:Drug)-[:HAS_ADVERSE_EVENT]->(ae:AdverseEvent) "
-            "WHERE toLower(d.name) CONTAINS toLower($drug_name) "
-            "   OR toLower(d.generic_name) CONTAINS toLower($drug_name) "
-            "RETURN ae.term AS event, ae.severity AS severity, "
-            "ae.count AS frequency "
-            "ORDER BY ae.count DESC LIMIT $limit"
+            f"MATCH (d:Drug)-[:HAS_ADVERSE_EFFECT]->(ae:AdverseEvent) "
+            f'WHERE d.name CONTAINS "{safe_name}" '
+            f"RETURN ae.term AS event, ae.source_vocabulary AS source "
+            f"LIMIT {int(limit)}"
         )
-        results = client.query_readonly(
-            "default", cypher, {"drug_name": drug_name, "limit": limit}
-        )
-        return json.dumps(results, default=str)
-
-    @mcp.tool()
-    def drug_interactions(drug_name: str) -> str:
-        """Find known drug-drug interactions for a given drug.
-
-        Interactions are sourced from trial co-administration data and
-        pharmacological databases linked during ETL.
-
-        Args:
-            drug_name: Drug name to check for interactions.
-
-        Returns:
-            JSON array of interacting drugs with interaction type and severity.
-        """
-        from mcp_server.server import client
-
-        cypher = (
-            "MATCH (d1:Drug)-[i:INTERACTS_WITH]->(d2:Drug) "
-            "WHERE toLower(d1.name) CONTAINS toLower($drug_name) "
-            "   OR toLower(d1.generic_name) CONTAINS toLower($drug_name) "
-            "RETURN d2.name AS interacting_drug, "
-            "i.interaction_type AS interaction_type, "
-            "i.severity AS severity, "
-            "i.description AS description "
-            "ORDER BY i.severity DESC"
-        )
-        results = client.query_readonly("default", cypher, {"drug_name": drug_name})
-        return json.dumps(results, default=str)
+        results = client.query_readonly(cypher, GRAPH)
+        return json.dumps(_to_dicts(results), default=str)
 
     @mcp.tool()
     def drug_class(drug_name: str) -> str:
         """Get the ATC (Anatomical Therapeutic Chemical) classification hierarchy
         for a drug.
 
-        Returns the full ATC path from anatomical main group down to the
-        chemical substance level.
+        Returns the DrugClass nodes linked via CLASSIFIED_AS and PARENT_CLASS
+        edges, showing the full ATC hierarchy from substance to anatomical group.
 
         Args:
             drug_name: Drug name to classify.
 
         Returns:
-            JSON object with ATC levels (L1 through L5) and their descriptions.
+            JSON object with ATC code, class name, and hierarchy levels.
         """
-        from mcp_server.server import client
+        from mcp_server.server import client, _escape, _to_dicts, GRAPH
 
+        safe_name = _escape(drug_name)
+
+        # Get the drug's immediate class (most specific ATC level)
         cypher = (
-            "MATCH (d:Drug)-[:BELONGS_TO]->(l5:ATCLevel5)"
-            "-[:CHILD_OF]->(l4:ATCLevel4)"
-            "-[:CHILD_OF]->(l3:ATCLevel3)"
-            "-[:CHILD_OF]->(l2:ATCLevel2)"
-            "-[:CHILD_OF]->(l1:ATCLevel1) "
-            "WHERE toLower(d.name) CONTAINS toLower($drug_name) "
-            "   OR toLower(d.generic_name) CONTAINS toLower($drug_name) "
-            "RETURN d.name AS drug, "
-            "l1.code AS atc_l1_code, l1.name AS atc_l1_name, "
-            "l2.code AS atc_l2_code, l2.name AS atc_l2_name, "
-            "l3.code AS atc_l3_code, l3.name AS atc_l3_name, "
-            "l4.code AS atc_l4_code, l4.name AS atc_l4_name, "
-            "l5.code AS atc_l5_code, l5.name AS atc_l5_name"
+            f"MATCH (d:Drug)-[:CLASSIFIED_AS]->(dc:DrugClass) "
+            f'WHERE d.name CONTAINS "{safe_name}" '
+            f"RETURN d.name AS drug, d.rxnorm_cui AS rxnorm_cui, "
+            f"dc.atc_code AS atc_code, dc.name AS class_name, dc.level AS level"
         )
-        results = client.query_readonly("default", cypher, {"drug_name": drug_name})
+        results = _to_dicts(client.query_readonly(cypher, GRAPH))
         if not results:
             return json.dumps({"error": f"No ATC classification found for '{drug_name}'"})
-        return json.dumps(results[0], default=str)
+
+        # Walk up the hierarchy via PARENT_CLASS
+        drug_info = results[0]
+        hierarchy = [{"atc_code": drug_info["atc_code"],
+                      "name": drug_info["class_name"],
+                      "level": drug_info["level"]}]
+
+        current_code = _escape(str(drug_info["atc_code"]))
+        for _ in range(5):
+            parent_cypher = (
+                f'MATCH (child:DrugClass {{atc_code: "{current_code}"}})'
+                f"-[:PARENT_CLASS]->(parent:DrugClass) "
+                f"RETURN parent.atc_code AS atc_code, "
+                f"parent.name AS name, parent.level AS level"
+            )
+            parents = _to_dicts(client.query_readonly(parent_cypher, GRAPH))
+            if not parents:
+                break
+            hierarchy.append(parents[0])
+            current_code = _escape(str(parents[0]["atc_code"]))
+
+        return json.dumps({
+            "drug": drug_info["drug"],
+            "rxnorm_cui": drug_info.get("rxnorm_cui"),
+            "hierarchy": hierarchy,
+        }, default=str)

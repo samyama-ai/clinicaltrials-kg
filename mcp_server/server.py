@@ -12,14 +12,27 @@ from mcp_server.tools.disease_tools import register_disease_tools
 from mcp_server.tools.analytics_tools import register_analytics_tools
 
 mcp = FastMCP("Clinical Trials KG")
-client: SamyamaClient | None = None
+client: SamyamaClient = SamyamaClient.embedded()
 
 
-@mcp.on_startup
-async def startup():
-    """Initialise the embedded Samyama graph client on server start."""
-    global client
-    client = SamyamaClient.embedded()
+GRAPH = "default"
+
+
+def _escape(value: str) -> str:
+    """Strip double quotes and normalize whitespace for Cypher string literals."""
+    if value is None:
+        return ""
+    return value.replace('"', '').replace('\n', ' ').replace('\r', '')
+
+
+def _q(val: str) -> str:
+    """Quote and escape a value for inline Cypher."""
+    return f'"{_escape(val)}"'
+
+
+def _to_dicts(result) -> list[dict]:
+    """Convert a QueryResult (columns + records) to a list of dicts."""
+    return [dict(zip(result.columns, row)) for row in result.records]
 
 
 # Register all tool groups

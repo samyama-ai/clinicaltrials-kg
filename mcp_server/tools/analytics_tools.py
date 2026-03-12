@@ -21,20 +21,19 @@ def register_analytics_tools(mcp: FastMCP):
             JSON array with phase, trial count, total enrollment, and
             average enrollment per trial.
         """
-        from mcp_server.server import client
+        from mcp_server.server import client, _escape, _to_dicts, GRAPH
 
+        safe_cond = _escape(condition)
         cypher = (
-            "MATCH (t:Trial)-[:STUDIES]->(c:Condition) "
-            "WHERE toLower(c.name) CONTAINS toLower($condition) "
-            "  AND t.enrollment IS NOT NULL "
-            "RETURN t.phase AS phase, "
-            "count(t) AS trial_count, "
-            "sum(t.enrollment) AS total_enrollment, "
-            "avg(t.enrollment) AS avg_enrollment "
-            "ORDER BY phase"
+            f"MATCH (t:ClinicalTrial)-[:STUDIES]->(c:Condition) "
+            f'WHERE c.name CONTAINS "{safe_cond}" '
+            f"RETURN t.phase AS phase, "
+            f"count(t) AS trial_count, "
+            f"sum(t.enrollment) AS total_enrollment, "
+            f"avg(t.enrollment) AS avg_enrollment "
+            f"ORDER BY phase"
         )
-        results = client.query_readonly("default", cypher, {"condition": condition})
-        # Round averages for readability
+        results = _to_dicts(client.query_readonly(cypher, GRAPH))
         for row in results:
             if row.get("avg_enrollment") is not None:
                 row["avg_enrollment"] = round(row["avg_enrollment"], 1)
@@ -45,27 +44,28 @@ def register_analytics_tools(mcp: FastMCP):
         """Show who is funding clinical research for a condition.
 
         Returns sponsors ranked by the number of trials they are running,
-        along with their type (Industry, NIH, Academic, etc.).
+        along with their class (Industry, NIH, etc.).
 
         Args:
             condition: Disease or condition name.
 
         Returns:
-            JSON array of sponsors with name, type, trial count, and phases.
+            JSON array of sponsors with name, class, trial count, and phases.
         """
-        from mcp_server.server import client
+        from mcp_server.server import client, _escape, _to_dicts, GRAPH
 
+        safe_cond = _escape(condition)
         cypher = (
-            "MATCH (t:Trial)-[:STUDIES]->(c:Condition), "
-            "      (t)-[:SPONSORED_BY]->(s:Sponsor) "
-            "WHERE toLower(c.name) CONTAINS toLower($condition) "
-            "RETURN s.name AS sponsor, s.sponsor_type AS type, "
-            "count(t) AS trial_count, "
-            "collect(DISTINCT t.phase) AS phases "
-            "ORDER BY trial_count DESC LIMIT 25"
+            f"MATCH (t:ClinicalTrial)-[:STUDIES]->(c:Condition), "
+            f"      (t)-[:SPONSORED_BY]->(s:Sponsor) "
+            f'WHERE c.name CONTAINS "{safe_cond}" '
+            f"RETURN s.name AS sponsor, s.class AS sponsor_class, "
+            f"count(t) AS trial_count, "
+            f"collect(DISTINCT t.phase) AS phases "
+            f"ORDER BY trial_count DESC LIMIT 25"
         )
-        results = client.query_readonly("default", cypher, {"condition": condition})
-        return json.dumps(results, default=str)
+        results = client.query_readonly(cypher, GRAPH)
+        return json.dumps(_to_dicts(results), default=str)
 
     @mcp.tool()
     def geographic_distribution(condition: str) -> str:
@@ -79,19 +79,20 @@ def register_analytics_tools(mcp: FastMCP):
         Returns:
             JSON array of countries with trial count and site count.
         """
-        from mcp_server.server import client
+        from mcp_server.server import client, _escape, _to_dicts, GRAPH
 
+        safe_cond = _escape(condition)
         cypher = (
-            "MATCH (t:Trial)-[:STUDIES]->(c:Condition), "
-            "      (t)-[:CONDUCTED_AT]->(s:Site) "
-            "WHERE toLower(c.name) CONTAINS toLower($condition) "
-            "RETURN s.country AS country, "
-            "count(DISTINCT t) AS trial_count, "
-            "count(s) AS site_count "
-            "ORDER BY trial_count DESC"
+            f"MATCH (t:ClinicalTrial)-[:STUDIES]->(c:Condition), "
+            f"      (t)-[:CONDUCTED_AT]->(s:Site) "
+            f'WHERE c.name CONTAINS "{safe_cond}" '
+            f"RETURN s.country AS country, "
+            f"count(DISTINCT t) AS trial_count, "
+            f"count(s) AS site_count "
+            f"ORDER BY trial_count DESC"
         )
-        results = client.query_readonly("default", cypher, {"condition": condition})
-        return json.dumps(results, default=str)
+        results = client.query_readonly(cypher, GRAPH)
+        return json.dumps(_to_dicts(results), default=str)
 
     @mcp.tool()
     def trial_timeline(condition: str) -> str:
@@ -103,32 +104,40 @@ def register_analytics_tools(mcp: FastMCP):
             condition: Disease or condition name.
 
         Returns:
-            JSON array of years with trial count, total enrollment, and
-            dominant phase.
+            JSON array of years with trial count and total enrollment.
         """
-        from mcp_server.server import client
+        from mcp_server.server import client, _escape, _to_dicts, GRAPH
 
+        safe_cond = _escape(condition)
         cypher = (
-            "MATCH (t:Trial)-[:STUDIES]->(c:Condition) "
-            "WHERE toLower(c.name) CONTAINS toLower($condition) "
-            "  AND t.start_date IS NOT NULL "
-            "WITH t, substring(toString(t.start_date), 0, 4) AS year "
-            "RETURN year, "
-            "count(t) AS trial_count, "
-            "sum(t.enrollment) AS total_enrollment, "
-            "collect(t.phase) AS phases "
-            "ORDER BY year"
+            f"MATCH (t:ClinicalTrial)-[:STUDIES]->(c:Condition) "
+            f'WHERE c.name CONTAINS "{safe_cond}" '
+            f"RETURN t.start_date AS start_date, "
+            f"t.phase AS phase, t.enrollment AS enrollment, "
+            f"t.nct_id AS nct_id"
         )
-        results = client.query_readonly("default", cypher, {"condition": condition})
+        results = _to_dicts(client.query_readonly(cypher, GRAPH))
 
-        # Compute dominant phase per year
+        # Group by year in Python (avoids substring function compatibility)
+        from collections import defaultdict
+        by_year: dict[str, list] = defaultdict(list)
         for row in results:
-            phase_list = row.pop("phases", [])
-            if phase_list:
-                from collections import Counter
-                counts = Counter(p for p in phase_list if p)
-                row["dominant_phase"] = counts.most_common(1)[0][0] if counts else None
-            else:
-                row["dominant_phase"] = None
+            date_str = str(row.get("start_date", "") or "")
+            year = date_str[:4] if len(date_str) >= 4 else "Unknown"
+            by_year[year].append(row)
 
-        return json.dumps(results, default=str)
+        timeline = []
+        for year in sorted(by_year.keys()):
+            rows = by_year[year]
+            total_enroll = sum(r.get("enrollment") or 0 for r in rows)
+            phases = [r.get("phase") for r in rows if r.get("phase")]
+            from collections import Counter
+            counts = Counter(phases)
+            dominant = counts.most_common(1)[0][0] if counts else None
+            timeline.append({
+                "year": year,
+                "trial_count": len(rows),
+                "total_enrollment": total_enroll,
+                "dominant_phase": dominant,
+            })
+        return json.dumps(timeline, default=str)
