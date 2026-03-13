@@ -1,5 +1,8 @@
 # Clinical Trials Knowledge Graph
 
+![Language](https://img.shields.io/badge/language-Python-3776AB)
+
+
 A knowledge graph connecting clinical trials, drugs, diseases, genes, and publications -- powered by [Samyama Graph Database](https://github.com/samyama-ai/samyama-graph) and real-world public data.
 
 **15 node labels** | **25 relationship types** | **5 public data sources** | **16 MCP tools** | **40 evaluation scenarios**
