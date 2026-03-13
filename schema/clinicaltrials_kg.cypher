@@ -7,7 +7,8 @@
 // Coding systems: MeSH, ICD-10, SNOMED CT, RxNorm, ATC, LOINC, UMLS
 //
 // Data sources:
-//   - ClinicalTrials.gov API v2 (trials, conditions, interventions, sponsors, sites)
+//   - AACT flat files (full ClinicalTrials.gov bulk download, ~500K+ studies)
+//   - ClinicalTrials.gov API v2 (alternative: per-condition API queries)
 //   - MeSH (Medical Subject Headings) — NLM
 //   - RxNorm — NLM (normalized drug names)
 //   - OpenFDA — FDA (adverse events, drug labels)

@@ -13,6 +13,7 @@ data/*.xml
 data/*.gz
 data/mesh/
 data/cache/
+data/aact/
 results/
 *.log
 .DS_Store
