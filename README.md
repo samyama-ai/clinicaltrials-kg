@@ -296,6 +296,12 @@ The 5-step ETL pipeline runs in order, with each step enriching the graph:
 
 5. **Vector embeddings** -- Loads the `all-MiniLM-L6-v2` sentence-transformer model (384 dimensions), encodes ClinicalTrial.brief_summary and Condition.name into vectors, and stores them in Samyama's HNSW vector index for cosine similarity search.
 
+### Full-Dataset Bulk Loading (AACT)
+
+For the complete 575K-study ClinicalTrials.gov dataset, Samyama Graph includes a native Rust AACT loader (`examples/aact_loader.rs`) that ingests the AACT pipe-delimited flat files directly into GraphStore, producing ~7.7M nodes and ~27M edges in roughly 5 minutes. The resulting graph can be exported as a `.sgsnap` snapshot and imported into a running Samyama instance via the HTTP API (`POST /api/snapshot/import`).
+
+A Python AACT loader (`etl/aact_loader.py`) is also available in this repository for integration with the Python ETL pipeline.
+
 ## Related
 
 - [Samyama Graph Database](https://github.com/samyama-ai/samyama-graph) -- High-performance graph DB with OpenCypher, vector search, and optimization
