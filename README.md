@@ -5,7 +5,16 @@
 
 A knowledge graph connecting clinical trials, drugs, diseases, genes, and publications -- powered by [Samyama Graph Database](https://github.com/samyama-ai/samyama-graph) and real-world public data.
 
-**15 node labels** | **25 relationship types** | **5 public data sources** | **16 MCP tools** | **40 evaluation scenarios**
+**7,779,702 nodes** | **26,980,360 edges** | **11 node labels** | **25 relationship types** | **575,778 studies** | **711 MB snapshot**
+
+## Snapshot
+
+| | |
+|---|---|
+| **GitHub** | [kg-snapshots-v5](https://github.com/samyama-ai/samyama-graph/releases/tag/kg-snapshots-v5) |
+| **S3** | `s3://samyama-data/snapshots/clinical-trials.sgsnap` |
+
+**5 public data sources** | **16 MCP tools** | **40 evaluation scenarios**
 
 ## Thesis
 
