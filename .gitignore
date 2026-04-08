@@ -19,3 +19,4 @@ results/
 .DS_Store
 .ruff_cache/
 .pytest_cache/
+data/*.sgsnap
