@@ -38,7 +38,8 @@ from typing import Any
 import click
 
 from etl.clinicaltrials_loader import load_trials
-from nsclc.entities import get_condition_aliases, get_mesh_codes
+from nsclc.entities import get_condition_aliases, get_mesh_codes, get_modalities
+from nsclc.modality import tag_modalities
 from samyama import SamyamaClient
 
 GRAPH = "default"
@@ -279,7 +280,11 @@ def assemble_records(
     mesh_hits: set[str],
     alias_hits: set[str],
 ) -> list[dict[str, Any]]:
-    """Build the flat per-trial JSON records, sorted by nct_id."""
+    """Build the flat per-trial JSON records, sorted by nct_id.
+
+    Each record is annotated with its treatment modalities using the
+    deterministic tagger in :mod:`nsclc.modality`.
+    """
     all_ids = sorted(mesh_hits | alias_hits)
     if not all_ids:
         return []
@@ -291,29 +296,33 @@ def assemble_records(
     sponsors = _fetch_sponsors(client, all_ids)
     sites = _fetch_sites(client, all_ids)
 
+    modalities_cfg = get_modalities()
+
     records: list[dict[str, Any]] = []
     for nct in all_ids:
         core = cores.get(nct, {})
         site_info = sites.get(nct, {"site_count": 0, "countries": []})
-        records.append(
-            {
-                "nct_id": nct,
-                "title": core.get("title"),
-                "status": core.get("status"),
-                "phase": core.get("phase"),
-                "enrollment": core.get("enrollment"),
-                "start_date": core.get("start_date"),
-                "completion_date": core.get("completion_date"),
-                "study_type": core.get("study_type"),
-                "brief_summary": core.get("brief_summary"),
-                "conditions": conds.get(nct, []),
-                "interventions": ivs.get(nct, []),
-                "drugs": drugs.get(nct, []),
-                "sponsor": sponsors.get(nct, {"name": "", "type": ""}),
-                "sites": site_info,
-                "match_method": "mesh" if nct in mesh_hits else "alias",
-            }
-        )
+        record: dict[str, Any] = {
+            "nct_id": nct,
+            "title": core.get("title"),
+            "status": core.get("status"),
+            "phase": core.get("phase"),
+            "enrollment": core.get("enrollment"),
+            "start_date": core.get("start_date"),
+            "completion_date": core.get("completion_date"),
+            "study_type": core.get("study_type"),
+            "brief_summary": core.get("brief_summary"),
+            "conditions": conds.get(nct, []),
+            "interventions": ivs.get(nct, []),
+            "drugs": drugs.get(nct, []),
+            "sponsor": sponsors.get(nct, {"name": "", "type": ""}),
+            "sites": site_info,
+            "match_method": "mesh" if nct in mesh_hits else "alias",
+        }
+        mods, evidence = tag_modalities(record, modalities_cfg)
+        record["modalities"] = mods
+        record["modality_evidence"] = evidence
+        records.append(record)
     return records
 
 
@@ -346,9 +355,14 @@ def build_subset(
     # Top-level summary stats
     cond_counter: Counter[str] = Counter()
     iv_counter: Counter[str] = Counter()
+    modality_counter: Counter[str] = Counter()
+    trials_with_modality = 0
     for rec in records:
         cond_counter.update(rec["conditions"])
         iv_counter.update(iv["name"] for iv in rec["interventions"])
+        if rec["modalities"]:
+            trials_with_modality += 1
+            modality_counter.update(rec["modalities"])
 
     summary = {
         "search_conditions": conditions,
@@ -361,6 +375,8 @@ def build_subset(
         "matched_by_alias": len(alias_hits),
         "top_conditions": cond_counter.most_common(10),
         "top_interventions": iv_counter.most_common(10),
+        "modality_distribution": modality_counter.most_common(),
+        "trials_with_modality": trials_with_modality,
     }
     return records, summary
 
@@ -388,6 +404,16 @@ def _print_summary(summary: dict[str, Any], *, stream=sys.stderr) -> None:
     print("  top interventions:", file=stream)
     for name, n in summary["top_interventions"]:
         print(f"    {n:>4d}  {name}", file=stream)
+    print(
+        f"  trials with >=1 modality  {summary['trials_with_modality']}",
+        file=stream,
+    )
+    print("  modality distribution:", file=stream)
+    if summary["modality_distribution"]:
+        for name, n in summary["modality_distribution"]:
+            print(f"    {n:>4d}  {name}", file=stream)
+    else:
+        print("    (none matched)", file=stream)
 
 
 @click.command("build-subset")
