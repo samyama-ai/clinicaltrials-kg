@@ -25,6 +25,8 @@ from typing import Any
 import click
 
 from etl.clinicaltrials_loader import load_trials
+from etl.drug_loader import load_drugs
+from etl.mesh_loader import load_mesh
 from nsclc.brief import write_brief
 from nsclc.build_subset import (
     assemble_records,
@@ -131,6 +133,7 @@ def run_pipeline(
     max_trials: int,
     include_results: bool,
     base_dir: str | Path,
+    enrich: bool = False,
 ) -> dict[str, Any]:
     """Execute the full NSCLC radar pipeline and return a summary dict."""
     # 1. Load the graph.
@@ -141,6 +144,11 @@ def run_pipeline(
         max_trials=max_trials,
         include_results=include_results,
     )
+    if enrich:
+        mesh_stats = load_mesh(client)
+        drug_stats = load_drugs(client)
+        load_stats["mesh"] = mesh_stats
+        load_stats["drugs"] = drug_stats
 
     # 2. Identify the NSCLC subset.
     mesh_codes = get_mesh_codes()
@@ -242,6 +250,12 @@ def run_pipeline(
     help="Fetch resultsSection (adverse events) too.",
 )
 @click.option(
+    "--enrich",
+    is_flag=True,
+    default=False,
+    help="Run MeSH + RxNorm/ATC enrichment so MeSH-first matching and ATC-first modality tagging can fire.",
+)
+@click.option(
     "--base-dir",
     type=click.Path(file_okay=False, writable=True),
     default="data/nsclc_runs",
@@ -254,6 +268,7 @@ def main(
     conditions: tuple[str, ...],
     max_trials: int,
     include_results: bool,
+    enrich: bool,
     base_dir: str,
 ) -> None:
     """Run the full NSCLC Evidence Radar pipeline end-to-end."""
@@ -267,6 +282,7 @@ def main(
         max_trials=max_trials,
         include_results=include_results,
         base_dir=base_dir,
+        enrich=enrich,
     )
 
     snapshot_dir = result["snapshot_dir"]
