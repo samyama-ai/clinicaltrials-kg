@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import click
 
+from nsclc.brief import main as brief_cmd
 from nsclc.build_subset import main as build_subset_cmd
 from nsclc.diff_snapshots import main as diff_cmd
 from nsclc.run import main as run_cmd
@@ -22,6 +23,7 @@ cli.add_command(build_subset_cmd)
 cli.add_command(workflows_cmd)
 cli.add_command(run_cmd)
 cli.add_command(diff_cmd)
+cli.add_command(brief_cmd)
 
 
 if __name__ == "__main__":

@@ -24,6 +24,7 @@ from typing import Any
 import click
 
 from etl.clinicaltrials_loader import load_trials
+from nsclc.brief import write_brief
 from nsclc.build_subset import (
     GRAPH,
     assemble_records,
@@ -63,6 +64,32 @@ def _parse_today(value: str | None) -> _dt.date:
         raise click.ClickException(
             f"--today must be YYYY-MM-DD, got {value!r}"
         ) from exc
+
+
+def _find_latest_prior_snapshot(
+    base_dir: str | Path, current_snapshot: Path
+) -> Path | None:
+    """Return the most recent snapshot dir under ``base_dir`` that sorts
+    lexicographically before ``current_snapshot`` and has a ``subset.jsonl``.
+
+    ``None`` if no such dir exists.  Name-based comparison is deliberate:
+    snapshot dir names start with ``YYYY-MM-DD`` so lexicographic order
+    matches chronological order.
+    """
+    base = Path(base_dir)
+    if not base.exists():
+        return None
+    current_name = current_snapshot.name
+    candidates = [
+        p for p in base.iterdir()
+        if p.is_dir()
+        and (p / "subset.jsonl").exists()
+        and p.name < current_name
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda p: p.name)
+    return candidates[-1]
 
 
 def _subset_summary(
@@ -173,12 +200,18 @@ def run_pipeline(
     metadata = capture_run_metadata(args_record, graph_stats)
     write_metadata(snapshot_dir, metadata)
 
+    # 7. Generate consolidated brief (auto-detect latest prior snapshot).
+    prior_snapshot = _find_latest_prior_snapshot(base_dir, snapshot_dir)
+    brief_path = write_brief(snapshot_dir, prior_snapshot_dir=prior_snapshot)
+
     return {
         "snapshot_dir": snapshot_dir,
         "subset_summary": summary,
         "workflow_summary": workflow_summary,
         "graph_stats": graph_stats,
         "metadata": metadata,
+        "brief_path": brief_path,
+        "prior_snapshot_dir": prior_snapshot,
     }
 
 
@@ -267,6 +300,11 @@ def main(
             f"    {name}: matched={info.get('total_matched', 0)}",
             file=sys.stderr,
         )
+    prior = result.get("prior_snapshot_dir")
+    brief_path = result.get("brief_path")
+    if brief_path:
+        tag = f"(prior: {prior.name})" if prior else "(no prior snapshot)"
+        print(f"  brief           {brief_path} {tag}", file=sys.stderr)
     print("", file=sys.stderr)
 
     # Final stdout line: the snapshot path, so downstream tools can capture it.
