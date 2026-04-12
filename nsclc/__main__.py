@@ -1,22 +1,22 @@
 """Entry point for `python -m nsclc`.
 
-Subcommands will be wired up in later build steps.
+Subcommands are registered as click commands on the `cli` group.
 """
 
-import sys
+from __future__ import annotations
+
+import click
+
+from nsclc.build_subset import main as build_subset_cmd
 
 
-def main() -> None:
-    print("nsclc-radar: NSCLC Evidence Radar")
-    print()
-    print("Usage:  python -m nsclc <command>")
-    print()
-    print("Commands (not yet implemented):")
-    print("  build-subset   Load NSCLC trial subset into the knowledge graph")
-    print("  query          Run pre-built evidence queries")
-    print("  report         Generate the evidence-radar report")
-    sys.exit(0)
+@click.group()
+def cli() -> None:
+    """NSCLC Evidence Radar — deterministic pipeline."""
+
+
+cli.add_command(build_subset_cmd)
 
 
 if __name__ == "__main__":
-    main()
+    cli()
