@@ -8,6 +8,7 @@ from __future__ import annotations
 import click
 
 from nsclc.build_subset import main as build_subset_cmd
+from nsclc.run import main as run_cmd
 from nsclc.workflows import main as workflows_cmd
 
 
@@ -18,6 +19,7 @@ def cli() -> None:
 
 cli.add_command(build_subset_cmd)
 cli.add_command(workflows_cmd)
+cli.add_command(run_cmd)
 
 
 if __name__ == "__main__":

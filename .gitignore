@@ -14,6 +14,7 @@ data/*.gz
 data/mesh/
 data/cache/
 data/aact/
+data/nsclc_runs/
 results/
 *.log
 .DS_Store
