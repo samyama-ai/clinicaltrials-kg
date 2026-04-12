@@ -368,7 +368,7 @@ def _run_egfr_brief(
     rows.sort(
         key=lambda r: (
             -_phase_rank(r.get("phase")),
-            -_enrollment_row(r),
+            -_enrollment(r),
             r.get("nct_id") or "",
         )
     )
@@ -389,19 +389,6 @@ def _run_egfr_brief(
         "per_drug_counts": per_drug,
         "groups": {"egfr_trials": rows},
     }
-
-
-def _enrollment_row(row: dict[str, Any]) -> int:
-    """Same as :func:`_enrollment` but for already-flattened summary rows."""
-    value = row.get("enrollment")
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.strip().isdigit():
-        return int(value.strip())
-    try:
-        return int(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return 0
 
 
 # ---------------------------------------------------------------------------
@@ -465,7 +452,7 @@ def _run_immunotherapy_brief(
             groups[g],
             key=lambda r: (
                 -_phase_rank(r.get("phase")),
-                -_enrollment_row(r),
+                -_enrollment(r),
                 r.get("nct_id") or "",
             ),
         )
@@ -499,14 +486,19 @@ _RADIATION_TYPES = {
     "brachytherapy": ["brachytherapy"],
 }
 
+# Declaration order drives grouping, counts, and markdown rendering.
+_RADIATION_TYPE_ORDER: tuple[str, ...] = ("SBRT", "proton", "brachytherapy", "other")
+
 _SYSTEMIC_MODALITIES = {"chemotherapy", "immunotherapy", "targeted_therapy"}
 
 
 def _classify_radiation(rec: dict[str, Any]) -> str:
     """Pick the most specific radiation type label for this trial."""
     names = [n.lower() for n in _intervention_names(rec) + _drug_names(rec)]
-    for label in ("SBRT", "proton", "brachytherapy"):
-        patterns = _RADIATION_TYPES[label]
+    for label in _RADIATION_TYPE_ORDER:
+        patterns = _RADIATION_TYPES.get(label)
+        if not patterns:
+            continue  # "other" has no patterns -- fall through as default
         if any(p in n for n in names for p in patterns):
             return label
     return "other"
@@ -521,10 +513,7 @@ def _run_radiotherapy_brief(
     filtered = [r for r in trials if modality in (r.get("modalities") or [])]
 
     groups: dict[str, list[dict[str, Any]]] = {
-        "SBRT": [],
-        "proton": [],
-        "brachytherapy": [],
-        "other": [],
+        g: [] for g in _RADIATION_TYPE_ORDER
     }
 
     def _summary_row(rec: dict[str, Any], rad_type: str) -> dict[str, Any]:
@@ -547,12 +536,12 @@ def _run_radiotherapy_brief(
 
     counts: dict[str, int] = {}
     ordered: dict[str, list[dict[str, Any]]] = {}
-    for g in ("SBRT", "proton", "brachytherapy", "other"):
+    for g in _RADIATION_TYPE_ORDER:
         rows = sorted(
             groups[g],
             key=lambda r: (
                 -_phase_rank(r.get("phase")),
-                -_enrollment_row(r),
+                -_enrollment(r),
                 r.get("nct_id") or "",
             ),
         )
@@ -753,7 +742,7 @@ def render_markdown(workflow_name: str, result: dict[str, Any]) -> str:
                 ],
             )
     elif workflow_name == "radiotherapy_brief":
-        for g in ("SBRT", "proton", "brachytherapy", "other"):
+        for g in _RADIATION_TYPE_ORDER:
             lines += _md_section_generic_rows(
                 g,
                 groups.get(g, []),
@@ -819,6 +808,22 @@ def run_all_workflows(
 # CLI
 # ---------------------------------------------------------------------------
 
+def parse_today(value: str | None) -> _dt.date:
+    """Parse a ``YYYY-MM-DD`` string (or return ``date.today()`` when empty).
+
+    Raises :class:`click.ClickException` on malformed input.  Shared by the
+    ``workflows`` and ``run`` CLIs to keep --today parsing consistent.
+    """
+    if not value:
+        return _dt.date.today()
+    try:
+        return _dt.datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise click.ClickException(
+            f"--today must be YYYY-MM-DD, got {value!r}"
+        ) from exc
+
+
 def _load_trials_file(path: str) -> list[dict[str, Any]]:
     """Load the subset JSON written by ``build_subset.py``."""
     with open(path, "r", encoding="utf-8") as fh:
@@ -856,15 +861,7 @@ def _load_trials_file(path: str) -> list[dict[str, Any]]:
 )
 def main(input_path: str, output_dir: str, today_str: str | None) -> None:
     """Run all five NSCLC workflows against a subset JSON file."""
-    if today_str:
-        try:
-            today = _dt.datetime.strptime(today_str, "%Y-%m-%d").date()
-        except ValueError as exc:
-            raise click.ClickException(
-                f"--today must be YYYY-MM-DD, got {today_str!r}"
-            ) from exc
-    else:
-        today = _dt.date.today()
+    today = parse_today(today_str)
 
     trials = _load_trials_file(input_path)
     summary = run_all_workflows(trials, output_dir, today=today)

@@ -37,7 +37,8 @@ from typing import Any
 
 import click
 
-from nsclc.diff_snapshots import compute_diff
+from nsclc.diff_snapshots import _pairs_to_dict, compute_diff
+from nsclc.workflows import _enrollment, _md_escape, _phase_rank, _truncate
 
 
 # ---------------------------------------------------------------------------
@@ -51,26 +52,14 @@ _ACTIVE_STATUSES: tuple[str, ...] = (
     "NOT_YET_RECRUITING",
 )
 
-# Same ranking we use in workflows.
-_PHASE_ORDER: dict[str, float] = {
-    "PHASE4": 4,
-    "PHASE3": 3,
-    "PHASE2/PHASE3": 2.5,
-    "PHASE2": 2,
-    "PHASE1/PHASE2": 1.5,
-    "PHASE1": 1,
-    "EARLY_PHASE1": 0.5,
-    "NA": 0,
-}
-
-# The six modality tags in the order we want to report "why relevant".
+# The five modality tags in the order we want to report "why relevant".
+# Mirrors the modalities declared in ``entities.yaml``.
 _MODALITY_ORDER: tuple[str, ...] = (
     "targeted_therapy",
     "immunotherapy",
     "chemotherapy",
     "radiotherapy",
     "antiangiogenic",
-    "hormonal_therapy",
 )
 
 
@@ -78,45 +67,8 @@ _MODALITY_ORDER: tuple[str, ...] = (
 # Small helpers
 # ---------------------------------------------------------------------------
 
-def _phase_rank(phase: Any) -> float:
-    if not phase:
-        return -1.0
-    key = str(phase).upper().replace(" ", "")
-    return _PHASE_ORDER.get(key, -1.0)
-
-
-def _enrollment(row: dict[str, Any]) -> int:
-    value = row.get("enrollment")
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.strip().isdigit():
-        return int(value.strip())
-    try:
-        return int(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return 0
-
-
-def _truncate(text: Any, length: int = 80) -> str:
-    if text is None:
-        return "-"
-    s = " ".join(str(text).split())
-    if not s:
-        return "-"
-    if len(s) <= length:
-        return s
-    return s[: length - 1].rstrip() + "…"
-
-
-def _md_escape(value: Any) -> str:
-    if value is None:
-        return "-"
-    s = str(value).replace("|", "\\|")
-    s = s.replace("\n", " ").replace("\r", " ")
-    return s.strip() or "-"
-
-
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    """Read a JSONL file; return ``[]`` if missing.  Blank lines skipped."""
     out: list[dict[str, Any]] = []
     if not path.exists():
         return out
@@ -130,6 +82,7 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 
 def _read_json(path: Path) -> dict[str, Any]:
+    """Read a JSON file; return ``{}`` if missing."""
     if not path.exists():
         return {}
     with open(path, "r", encoding="utf-8") as fh:
@@ -137,23 +90,13 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _sponsor_name(rec: dict[str, Any]) -> str | None:
+    """Pull the sponsor name from a subset record or flat workflow row."""
     sponsor = rec.get("sponsor")
     if isinstance(sponsor, dict):
         return sponsor.get("name")
     if isinstance(sponsor, str):
         return sponsor
     return None
-
-
-def _pairs_to_dict(pairs: Any) -> dict[str, int]:
-    if isinstance(pairs, dict):
-        return {str(k): int(v) for k, v in pairs.items()}
-    out: dict[str, int] = {}
-    if isinstance(pairs, list):
-        for item in pairs:
-            if isinstance(item, (list, tuple)) and len(item) == 2:
-                out[str(item[0])] = int(item[1])
-    return out
 
 
 # ---------------------------------------------------------------------------

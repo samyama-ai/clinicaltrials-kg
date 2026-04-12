@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +27,6 @@ import click
 from etl.clinicaltrials_loader import load_trials
 from nsclc.brief import write_brief
 from nsclc.build_subset import (
-    GRAPH,
     assemble_records,
     find_trials_by_alias,
     find_trials_by_mesh,
@@ -43,28 +43,16 @@ from nsclc.snapshot import (
 )
 from nsclc.workflows import (
     list_workflow_names,
+    parse_today,
     render_markdown,
     run_workflow,
 )
 from samyama import SamyamaClient
 
-from collections import Counter
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _parse_today(value: str | None) -> _dt.date:
-    if not value:
-        return _dt.date.today()
-    try:
-        return _dt.datetime.strptime(value, "%Y-%m-%d").date()
-    except ValueError as exc:
-        raise click.ClickException(
-            f"--today must be YYYY-MM-DD, got {value!r}"
-        ) from exc
-
 
 def _find_latest_prior_snapshot(
     base_dir: str | Path, current_snapshot: Path
@@ -269,7 +257,7 @@ def main(
     base_dir: str,
 ) -> None:
     """Run the full NSCLC Evidence Radar pipeline end-to-end."""
-    today = _parse_today(today_str)
+    today = parse_today(today_str)
     conditions_list = list(conditions)
 
     result = run_pipeline(
