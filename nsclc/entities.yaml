@@ -1,0 +1,106 @@
+# NSCLC Evidence Radar -- vocabulary / config for entity identification.
+#
+# Used by build_subset.py (and downstream) to identify NSCLC trials,
+# classify drugs by modality, and label treatment arms.
+#
+# Matching rules:
+#   - MeSH / ATC codes are the primary signal (exact prefix match).
+#   - String aliases are a case-insensitive fallback when codes are absent.
+
+# ── Conditions ────────────────────────────────────────────────────────
+conditions:
+  mesh_codes:
+    - "D002289"                # Carcinoma, Non-Small-Cell Lung
+
+  # Case-insensitive substring patterns matched against Condition.name.
+  aliases:
+    - "Non-Small-Cell Lung"
+    - "NSCLC"
+    - "Non Small Cell Lung"
+    - "Lung Non-Small Cell"
+
+# ── Treatment modalities ─────────────────────────────────────────────
+# Each modality lists ATC-code prefixes (primary) and drug-name patterns
+# (fallback).  A drug matches a modality if any of its ATC codes starts
+# with one of the listed prefixes, OR its name case-insensitively
+# contains one of the drug_aliases strings.
+
+modalities:
+  targeted_therapy:
+    atc_prefixes:
+      - "L01E"                 # protein kinase inhibitors
+      - "L01FE"                # EGFR monoclonal antibodies
+    drug_aliases:
+      - "erlotinib"
+      - "gefitinib"
+      - "osimertinib"
+      - "afatinib"
+      - "dacomitinib"
+      - "crizotinib"
+      - "alectinib"
+      - "brigatinib"
+      - "lorlatinib"
+      - "ceritinib"
+      - "capmatinib"
+      - "tepotinib"
+      - "sotorasib"
+      - "adagrasib"
+      - "cetuximab"
+      - "necitumumab"
+
+  immunotherapy:
+    atc_prefixes:
+      - "L01FF"                # PD-1 / PD-L1 inhibitors
+      - "L01FX"                # other immunostimulatory MAbs
+    drug_aliases:
+      - "nivolumab"
+      - "pembrolizumab"
+      - "atezolizumab"
+      - "durvalumab"
+      - "cemiplimab"
+      - "ipilimumab"
+      - "tremelimumab"
+      - "sugemalimab"
+      - "sintilimab"
+      - "camrelizumab"
+      - "tislelizumab"
+      - "toripalimab"
+
+  chemotherapy:
+    atc_prefixes:
+      - "L01A"                 # alkylating agents
+      - "L01B"                 # antimetabolites
+      - "L01C"                 # plant alkaloids & other natural products
+      - "L01D"                 # cytotoxic antibiotics
+    drug_aliases:
+      - "cisplatin"
+      - "carboplatin"
+      - "pemetrexed"
+      - "gemcitabine"
+      - "docetaxel"
+      - "paclitaxel"
+      - "nab-paclitaxel"
+      - "vinorelbine"
+      - "etoposide"
+      - "irinotecan"
+      - "doxorubicin"
+
+  radiotherapy:
+    atc_prefixes: []           # no ATC codes for radiation
+    # Matched against Intervention.name (case-insensitive substring).
+    drug_aliases:
+      - "radiation"
+      - "radiotherapy"
+      - "SBRT"
+      - "proton"
+      - "brachytherapy"
+      - "stereotactic body"
+      - "chemoradiation"
+
+  antiangiogenic:
+    atc_prefixes:
+      - "L01FG"                # VEGF / VEGFR inhibitors
+    drug_aliases:
+      - "bevacizumab"
+      - "ramucirumab"
+      - "nintedanib"
