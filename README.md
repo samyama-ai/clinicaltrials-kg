@@ -94,6 +94,11 @@ This KG is one of three biomedical knowledge graphs that together form Samyama's
 | Benchmark (100 queries) | [Biomedical Benchmark](https://samyama-ai.github.io/samyama-graph-book/biomedical_benchmark.html) |
 | Contact | [samyama.dev/contact](https://samyama.dev/contact) |
 
+## NSCLC Evidence Radar
+
+A deterministic pipeline for monitoring non-small-cell lung cancer trial
+evidence. See [`docs/nsclc_radar.md`](docs/nsclc_radar.md) for details.
+
 ## License
 
 Apache 2.0
