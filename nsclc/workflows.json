@@ -1,0 +1,75 @@
+{
+  "workflows": [
+    {
+      "name": "weekly_update",
+      "description": "Trials that recently started or recently completed, grouped by milestone.",
+      "filters": {
+        "date_window_days": {
+          "started": 365,
+          "completed": 180
+        }
+      },
+      "grouping": ["recently_started", "recently_completed"]
+    },
+    {
+      "name": "trial_radar",
+      "description": "Active recruiting (or about-to-recruit) trials across all NSCLC modalities.",
+      "filters": {
+        "status_in": [
+          "RECRUITING",
+          "NOT_YET_RECRUITING",
+          "ACTIVE_NOT_RECRUITING"
+        ]
+      },
+      "grouping": [
+        "targeted_therapy",
+        "immunotherapy",
+        "chemotherapy",
+        "radiotherapy",
+        "antiangiogenic",
+        "untagged"
+      ],
+      "sort": ["phase_desc", "enrollment_desc"]
+    },
+    {
+      "name": "egfr_brief",
+      "description": "Trials relevant to EGFR-targeted therapy (small-molecule TKIs and mAbs).",
+      "filters": {
+        "drug_name_any_of": [
+          "erlotinib",
+          "gefitinib",
+          "osimertinib",
+          "afatinib",
+          "dacomitinib",
+          "cetuximab",
+          "necitumumab",
+          "amivantamab"
+        ]
+      },
+      "grouping": ["egfr_trials"]
+    },
+    {
+      "name": "immunotherapy_brief",
+      "description": "Trials using PD-1 / PD-L1 or CTLA-4 checkpoint inhibitors.",
+      "filters": {
+        "modality": "immunotherapy"
+      },
+      "grouping": [
+        "pembrolizumab",
+        "nivolumab",
+        "atezolizumab",
+        "durvalumab",
+        "ipilimumab",
+        "others"
+      ]
+    },
+    {
+      "name": "radiotherapy_brief",
+      "description": "Trials involving radiation therapy, grouped by radiation type.",
+      "filters": {
+        "modality": "radiotherapy"
+      },
+      "grouping": ["SBRT", "proton", "brachytherapy", "other"]
+    }
+  ]
+}
