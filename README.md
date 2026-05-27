@@ -2,6 +2,8 @@
 
 **7.8 million nodes. 27 million edges. Every registered study on ClinicalTrials.gov in one graph.**
 
+![Clinical Trials KG demo](demo/clinicaltrials.gif)
+
 > Part of the **Samyama** ecosystem — loaded into and queried via the graph engine at [samyama-ai/samyama-graph](https://github.com/samyama-ai/samyama-graph).
 > This repo holds the loader and source-data specifics for the KG.
 
@@ -32,6 +34,26 @@ ORDER BY trials DESC LIMIT 5
 [See all 100 benchmark queries →](https://samyama-ai.github.io/samyama-graph-book/biomedical_benchmark.html)
 
 ---
+
+## Demo
+
+A narrated terminal demo loads a **real bounded subset** of the AACT bulk
+download (the first 250 ClinicalTrials.gov studies plus their conditions,
+interventions, arm groups, lead sponsors, MeSH cross-references and
+publications — the multi-GB sites/outcomes/adverse-event tables are skipped so
+it loads in under a minute) and walks through four domain questions.
+
+```bash
+# Run it
+source ~/projects/venv/bin/activate
+PYTHONUNBUFFERED=1 python -m demo.demo
+
+# Re-record (asciinema + agg)
+asciinema rec --overwrite --cols 92 --rows 32 --idle-time-limit 2.0 \
+  -c "bash -c 'source ~/projects/venv/bin/activate && PYTHONUNBUFFERED=1 python -m demo.demo'" \
+  demo/clinicaltrials.cast
+agg demo/clinicaltrials.cast demo/clinicaltrials.gif
+```
 
 ## Schema
 
