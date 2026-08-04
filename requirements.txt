@@ -1,0 +1,13 @@
+# Runtime dependencies for the Clinical Trials Knowledge Graph.
+# Mirrors [project.dependencies] in pyproject.toml — `pip install .` works too.
+# Requires Python >= 3.10 (the samyama SDK).
+# Note: sentence-transformers pulls in torch (~large) for embeddings.
+samyama>=0.6.0
+httpx>=0.25
+requests>=2.31
+pydantic>=2.0
+sentence-transformers>=2.2.0
+fastmcp>=0.1.0
+click>=8.0
+rich>=13.0
+numpy>=1.24

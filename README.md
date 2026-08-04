@@ -55,6 +55,16 @@ asciinema rec --overwrite --cols 92 --rows 32 --idle-time-limit 2.0 \
 agg demo/clinicaltrials.cast demo/clinicaltrials.gif
 ```
 
+## Documentation
+
+New here? Start with the guides:
+
+| Guide | What it covers |
+|-------|----------------|
+| **[GETTING_STARTED.md](GETTING_STARTED.md)** | prerequisites (Python ≥ 3.10) · install · run the engine (Docker) · load the graph · first query |
+| **[docs/QUERYING.md](docs/QUERYING.md)** | ask questions via the **HTTP API** or the **Samyama CLI** |
+| [Biomedical Benchmark](https://samyama-ai.github.io/samyama-graph-book/biomedical_benchmark.html) | 100 example queries |
+
 ## Schema
 
 **11 node labels** -- ClinicalTrial, Condition, Intervention, ArmGroup, Outcome, Sponsor, Site, AdverseEvent, MeSHDescriptor, Drug, Publication
@@ -65,29 +75,28 @@ agg demo/clinicaltrials.cast demo/clinicaltrials.gif
 
 ## Quick Start
 
-### Load from snapshot (recommended)
+**Full walkthrough → [GETTING_STARTED.md](GETTING_STARTED.md)** (prerequisites, Docker, loading, querying).
+
+### Build from source — bounded subset (friendliest first run)
+
+Needs **Python ≥ 3.10** and **Docker**:
 
 ```bash
-# Download (711 MB)
+pip install -r requirements.txt
+docker run --rm -p 8080:8080 -p 6379:6379 public.ecr.aws/f9f6l5u4/samyama-graph:1.1.0
+
+python -m etl.loader                    # ~5 conditions x 200 trials (into the `default` tenant)
+python -m etl.loader --conditions "Lung Cancer" --max-trials 500   # custom
+```
+
+### Load from snapshot (large — ~711 MB → `clinical-trials` tenant)
+
+```bash
 curl -LO https://github.com/samyama-ai/samyama-graph/releases/download/kg-snapshots-v5/clinical-trials.sgsnap
-
-# Start Samyama and import
-./target/release/samyama
-curl -X POST http://localhost:8080/api/tenants \
-  -H 'Content-Type: application/json' \
-  -d '{"id":"clinical-trials","name":"Clinical Trials KG"}'
-curl -X POST http://localhost:8080/api/tenants/clinical-trials/snapshot/import \
-  -F "file=@clinical-trials.sgsnap"
+curl -X POST http://localhost:8080/api/tenants -H 'Content-Type: application/json' -d '{"id":"clinical-trials","name":"Clinical Trials KG"}'
+curl -X POST http://localhost:8080/api/tenants/clinical-trials/snapshot/import -F "file=@clinical-trials.sgsnap"
 ```
-
-### Build from source
-
-```bash
-git clone https://github.com/samyama-ai/clinicaltrials-kg.git && cd clinicaltrials-kg
-pip install -e ".[dev]"
-python -m etl.loader                    # Default: 5 conditions x 200 trials
-python -m etl.loader --conditions "Lung Cancer" --max-trials 500   # Custom
-```
+*(The snapshot expands to millions of nodes — import it on an engine with plenty of memory.)*
 
 ## Example Queries
 
