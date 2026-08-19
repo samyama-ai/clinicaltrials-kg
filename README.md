@@ -8,6 +8,23 @@
 > This repo holds the loader and source-data specifics for the KG.
 
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-blue" alt="License"></a>
+<a href="https://huggingface.co/datasets/VaidhyaMegha/clinicaltrials-kg"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20dataset-VaidhyaMegha%2Fclinicaltrials--kg-yellow" alt="HuggingFace dataset"></a>
+
+**Most of this graph is published as a dataset** — you do not have to run the ETL to get it:
+**[huggingface.co/datasets/VaidhyaMegha/clinicaltrials-kg](https://huggingface.co/datasets/VaidhyaMegha/clinicaltrials-kg)**
+(`v1.0`). 7,628,735 nodes and 15,531,427 edges as **Parquet**, 623 MB.
+
+```python
+from datasets import load_dataset
+trials = load_dataset("VaidhyaMegha/clinicaltrials-kg", "clinicaltrial", revision="v1.0")
+```
+
+> ⚠️ **The published dataset excludes adverse events and drugs.** MedDRA (which codes every
+> `AdverseEvent`) is a paid ICH/IFPMA subscription, and every `Drug` node carries a
+> `drugbank_id` under DrugBank's tiered terms — neither may be redistributed. That removes
+> **150,967 nodes (1.9%) and 11,448,933 edges (42%)**, since adverse-event reporting is dense.
+> No `.sgsnap` is shipped either, because the snapshot still contains those records. Build the
+> full graph with the ETL here, sourcing MedDRA and DrugBank under their own terms.
 
 ---
 
@@ -123,11 +140,32 @@ This KG is one of three biomedical knowledge graphs that together form Samyama's
 
 | | |
 |---|---|
+| **Published dataset** (excludes MedDRA/DrugBank) | **[huggingface.co/datasets/VaidhyaMegha/clinicaltrials-kg](https://huggingface.co/datasets/VaidhyaMegha/clinicaltrials-kg)** |
 | Samyama Graph | [github.com/samyama-ai/samyama-graph](https://github.com/samyama-ai/samyama-graph) |
+| AACT database | [aact.ctti-clinicaltrials.org](https://aact.ctti-clinicaltrials.org/) |
 | The Book | [samyama-ai.github.io/samyama-graph-book](https://samyama-ai.github.io/samyama-graph-book/) |
 | Benchmark (100 queries) | [Biomedical Benchmark](https://samyama-ai.github.io/samyama-graph-book/biomedical_benchmark.html) |
 | Contact | [samyama.dev/contact](https://samyama.dev/contact) |
 
 ## License
 
-Apache 2.0
+Apache 2.0 covers the **code** in this repository — see [`LICENSE`](LICENSE). The **data** is a
+separate matter, and the sources do not share one licence.
+
+| Source | Feeds | Terms | Redistributable? |
+|--------|-------|-------|------------------|
+| [ClinicalTrials.gov](https://clinicaltrials.gov/) via [AACT](https://aact.ctti-clinicaltrials.org/) | trials, arms, outcomes, sites, sponsors, conditions, interventions | **US Government public domain.** CTTI states no licence and no restriction, and asks for acknowledgement | ✅ with attribution |
+| [PubMed / MeSH](https://www.nlm.nih.gov/databases/download/terms_and_conditions.html) (NLM) | `Publication`, `MeSHDescriptor` | "No charges, usage fees or royalties"; commercial use permitted | ✅ with attribution |
+| [MedDRA](https://www.meddra.org/) | every `AdverseEvent` (`source_vocabulary: "MedDRA"`) | Licensed by ICH/IFPMA, **paid subscription** | ❌ **no** |
+| [DrugBank](https://go.drugbank.com/) | every `Drug` (`drugbank_id`) | Tiered terms; some prohibit redistribution | ❌ **no** |
+
+**Attribution required** by both permissive sources:
+
+> Courtesy of the **U.S. National Library of Medicine**.
+>
+> Aggregate Analysis of ClinicalTrials.gov (AACT) Database. Clinical Trials Transformation
+> Initiative (CTTI). https://aact.ctti-clinicaltrials.org/
+
+Neither NLM nor CTTI endorses this work. FDA publishing FAERS does not transfer MedDRA's
+rights, so MedDRA-coded terms remain restricted even though the FAERS release is public
+domain.
