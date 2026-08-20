@@ -117,7 +117,7 @@ RETURN site.country, count(DISTINCT t) AS trials ORDER BY trials DESC
 
 ## Part of the Biomedical Trifecta
 
-This KG is one of three biomedical knowledge graphs that together form Samyama's billion-edge benchmark: **Clinical Trials** (27M edges) + [Pathways](https://github.com/samyama-ai/pathways-kg) (835K edges) + [Drug Interactions](https://github.com/samyama-ai/druginteractions-kg) (388K edges), federated with [PubMed](https://github.com/samyama-ai/pubmed-kg) (1.04B edges).
+This KG is one of three biomedical knowledge graphs that together form Samyama's billion-edge benchmark: **Clinical Trials** (27M edges) + [Pathways](https://github.com/samyama-ai/pathways-kg) (835K edges) + [Drug Interactions](https://github.com/samyama-ai/druginteractions-kg) (388K edges), merged on load with [PubMed](https://github.com/samyama-ai/pubmed-kg) (1.04B edges).
 
 ## Links
 
