@@ -119,6 +119,8 @@ RETURN site.country, count(DISTINCT t) AS trials ORDER BY trials DESC
 
 This KG is one of three biomedical knowledge graphs that together form Samyama's billion-edge benchmark: **Clinical Trials** (27M edges) + [Pathways](https://github.com/samyama-ai/pathways-kg) (835K edges) + [Drug Interactions](https://github.com/samyama-ai/druginteractions-kg) (388K edges), merged on load with [PubMed](https://github.com/samyama-ai/pubmed-kg) (1.04B edges).
 
+These four graphs are also loaded as part of a larger merged corpus — fifteen KGs plus two synthetic patient cohorts in a single store. [BiomedQA](https://github.com/samyama-ai/biomedqa#beyond-the-benchmark-a-318m-node-corpus) has the node, edge and merge counts, and states how and when they were measured.
+
 ## Links
 
 | | |
