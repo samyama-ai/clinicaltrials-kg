@@ -29,13 +29,11 @@ size_categories:
 
 ## Provenance and licence
 
-Apache 2.0
+Apache 2.0 covers the loader. Four of the five sources — ClinicalTrials.gov, MeSH, PubMed
+(NLM) and openFDA FAERS (CC0) — are U.S. government works, redistributable with
+acknowledgement of NLM and FDA. **RxNorm/ATC is not yet verified** and is the row to settle
+before publishing a snapshot. See [`DATA-LICENSES.md`](DATA-LICENSES.md).
 
-> ⚠️ **The licence above covers this repository's code, not the data.** This graph is
-> derived from an upstream source (ClinicalTrials.gov, MeSH (NLM), RxNorm/ATC, OpenFDA FAERS, PubMed), whose
-> own terms govern redistribution and are **not stated here**. Establish and record them
-> before redistributing or quoting this dataset. The frontmatter is therefore
-> `license: other` rather than `apache-2.0`.
 
 ## Reproducing
 
