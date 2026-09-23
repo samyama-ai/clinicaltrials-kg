@@ -47,6 +47,34 @@ README's Quick Start for the snapshot download and the from-source build.
 - Where a field above says *not recorded*, that is a gap in this repository rather
   than a property of the data.
 
+## Personal data in the text fields
+
+The published snapshot carries **contact email addresses and phone numbers**
+inside free-text and name fields: 33 distinct addresses in `Site.facility`, 12
+phone numbers in `Site.zip`, and smaller numbers across ten other fields, out
+of 36.5 million property values.
+
+They are there because they are in the registry. ClinicalTrials.gov requires
+contact details for recruiting trials and publishes them so patients can reach
+sites; AACT redistributes that extract in full. **This ETL never reads AACT's
+`contacts` or `central_contacts` tables** — it takes `facility`, `city`,
+`state`, `country` and `zip` from `contactsLocationsModule.locations`. Every
+occurrence is therefore incidental text inside a field copied verbatim: a
+facility *name* with a contact appended, sponsor-written `brief_summary` prose,
+or a postcode column somebody typed a phone number into at registration.
+
+They are **not scrubbed**, deliberately. Removing them would edit
+sponsor-authored text and make this snapshot diverge from AACT, and matching
+the source is the property a benchmark snapshot most has to keep. The decision,
+with the count accepted per field, is recorded in
+[`docs/pii-waivers.json`](https://github.com/samyama-ai/samyama-graph/blob/main/docs/pii-waivers.json)
+in the engine repository (samyama-graph#1439), and a weekly scan fails if a
+*new* contact appears in a field already on that list.
+
+If you are re-publishing this graph, that decision is ours and not
+automatically yours — it rests on the source registry's own publication, and
+your jurisdiction and purpose may differ.
+
 ## Links
 
 | | |
