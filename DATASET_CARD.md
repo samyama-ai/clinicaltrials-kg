@@ -34,6 +34,28 @@ Apache 2.0 covers the loader. Four of the five sources — ClinicalTrials.gov, M
 acknowledgement of NLM and FDA. **RxNorm/ATC is not yet verified** and is the row to settle
 before publishing a snapshot. See [`DATA-LICENSES.md`](DATA-LICENSES.md).
 
+## Freshness
+
+**Refresh cadence:** AACT (`aact.ctti-clinicaltrials.org`), the source for the
+ClinicalTrials.gov studies here, publishes a new static pipe-delimited database
+export monthly. `etl/download_aact.py` scrapes AACT's downloads page for whatever
+flat-files URL is current at run time rather than pinning a version, so a fresh
+loader run tracks AACT's latest monthly release, not a fixed vendored month. MeSH
+(NLM) is revised annually with the November release plus periodic corrections;
+openFDA FAERS is refreshed quarterly by the FDA; PubMed publishes an annual December
+baseline plus daily update files; RxNorm is released monthly by NLM — but see below,
+that source is not yet licence-verified for use here regardless of cadence.
+
+**Data as of:** the upstream terms pages for the four government-work sources were
+last checked 2026-09-18, per [`DATA-LICENSES.md`](DATA-LICENSES.md)'s "Checked"
+column. The "Personal data in the text fields" section below, which counts real
+contact addresses/phone numbers found in the published snapshot's fields, was
+written and committed 2026-09-23 (`git log -1 --format=%ad -- DATASET_CARD.md`),
+which means the snapshot it describes was inspected on or before that date. Neither
+`git log` nor the docs record a specific AACT export date (e.g. a
+"YYYYMMDD_pipe-delimited-export" filename) actually used to build the current
+snapshot, so the precise AACT vintage is **unknown** — the loader always pulls
+"current" rather than recording which monthly export it fetched.
 
 ## Reproducing
 
@@ -83,3 +105,21 @@ your jurisdiction and purpose may differ.
 | The Book | [samyama-ai.github.io/samyama-graph-book](https://samyama-ai.github.io/samyama-graph-book/) |
 | Benchmark (100 queries) | [Biomedical Benchmark](https://samyama-ai.github.io/samyama-graph-book/biomedical_benchmark.html) |
 | Contact | [samyama.dev/contact](https://samyama.dev/contact) |
+
+## Citation
+
+Please cite this repository if you use it. See [`CITATION.cff`](CITATION.cff) for
+machine-readable metadata (CFF 1.2.0).
+
+```bibtex
+@misc{clinicaltrials_kg_2026,
+  title        = {Clinical Trials Knowledge Graph},
+  author       = {Samyama},
+  year         = {2026},
+  howpublished = {\url{https://git.samyama.ai/Samyama.ai/clinicaltrials-kg}}
+}
+```
+
+**No DOI.** This release has not been deposited to Zenodo, so there is no DOI to
+cite. Getting one is open work — it requires a human to make the Zenodo deposit
+(KG-06).
