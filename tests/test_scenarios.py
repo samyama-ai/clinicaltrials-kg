@@ -112,10 +112,59 @@ def test_ids_unique(all_scenarios):
 
 
 def test_total_scenario_count(all_scenarios):
-    """There must be exactly 40 scenarios in total."""
-    assert len(all_scenarios) == 40, (
-        f"Expected 40 scenarios, found {len(all_scenarios)}"
+    """There must be exactly 46 scenarios in total: 40 answerable, 6 not."""
+    assert len(all_scenarios) == 46, (
+        f"Expected 46 scenarios, found {len(all_scenarios)}"
     )
+
+
+# ---- KG-08: unanswerable items ----
+#
+# KG-08 asks every KG for >=30 queries with gold answers, difficulty labels
+# **and unanswerable items**. The first three were here and the fourth was not.
+#
+# They are not padding. Declining is a correctness behaviour, and a suite made
+# only of answerable questions cannot tell a model that declines from one that
+# guesses -- both score the same on every item. A conformance sweep across the
+# KG repositories found this same gap in two suites built independently for
+# unrelated domains, which is what a missing clause looks like when nobody is
+# checking: left to themselves, people write questions the graph can answer.
+
+def test_unanswerable_items_exist(all_scenarios):
+    """At least one scenario must be unanswerable."""
+    n = sum(1 for _, s in all_scenarios if s.get("unanswerable"))
+    assert n > 0, (
+        "No unanswerable scenarios. KG-08 requires them: without one, a model "
+        "that declines and a model that guesses score identically."
+    )
+
+
+def test_unanswerable_items_say_why(all_scenarios):
+    """Each unanswerable scenario must state which part of the schema is missing.
+
+    A bare `unanswerable: true` is unfalsifiable -- the next person cannot tell
+    a question the graph genuinely cannot answer from one somebody found hard,
+    and the flag drifts into a difficulty label.
+    """
+    for filename, s in all_scenarios:
+        if not s.get("unanswerable"):
+            continue
+        why = s.get("why_unanswerable", "")
+        assert isinstance(why, str) and len(why) >= 40, (
+            f"{filename}: scenario {s.get('id','?')} is marked unanswerable "
+            f"without a substantive 'why_unanswerable'"
+        )
+
+
+def test_answerable_items_are_not_flagged(all_scenarios):
+    """`unanswerable` must be absent or false on the answerable scenarios."""
+    for filename, s in all_scenarios:
+        if s.get("id", "").startswith("unanswerable_"):
+            continue
+        assert not s.get("unanswerable"), (
+            f"{filename}: scenario {s.get('id','?')} is flagged unanswerable "
+            f"but is not part of the unanswerable set"
+        )
 
 
 def test_expected_output_contains_non_empty(all_scenarios):

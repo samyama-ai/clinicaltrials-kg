@@ -1,0 +1,68 @@
+[
+  {
+    "id": "unanswerable_001",
+    "category": "trial_landscape",
+    "description": "Which of the diabetes drugs currently in Phase 3 trials has the lowest monthly treatment cost?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["cost", "not available"],
+    "difficulty": "hard",
+    "requires_graph": true,
+    "unanswerable": true,
+    "why_unanswerable": "There is no price, cost or payer data in the graph. The Drug node carries naming and classification from RxNorm/ATC, not economics, and none of the eleven edge types connects a Drug to a price. The question is answerable-sounding because the drugs and the phase are both present; only the quantity asked for is missing."
+  },
+  {
+    "id": "unanswerable_002",
+    "category": "adverse_event_analysis",
+    "description": "Which individual participants in NCT00000102 reported a serious adverse event, and what were their ages?",
+    "expected_tools": ["cypher_query", "get_trial"],
+    "expected_output_contains": ["patient-level", "not available"],
+    "difficulty": "hard",
+    "requires_graph": true,
+    "unanswerable": true,
+    "why_unanswerable": "ClinicalTrials.gov is a trial-level registry. AdverseEvent nodes hold counts aggregated per arm, not per person, and there is no Participant or Patient label among the eleven. No amount of traversal reaches an individual, so a model that answers this has invented people."
+  },
+  {
+    "id": "unanswerable_003",
+    "category": "drug_repurposing",
+    "description": "On what date did the FDA approve semaglutide for chronic weight management?",
+    "expected_tools": ["cypher_query", "drug_class"],
+    "expected_output_contains": ["approval", "not available"],
+    "difficulty": "medium",
+    "requires_graph": true,
+    "unanswerable": true,
+    "why_unanswerable": "The graph holds trials, not regulatory decisions. There is no Approval node and no edge recording a regulator's action; RxNorm and ATC supply drug naming and classification, and OpenFDA FAERS supplies adverse-event reports, neither of which is an approval record. A trial registry can show that a drug was studied for an indication and cannot show whether it was approved for one."
+  },
+  {
+    "id": "unanswerable_004",
+    "category": "geographic_analysis",
+    "description": "Which physicians in Massachusetts prescribe metformin most frequently?",
+    "expected_tools": ["cypher_query", "trial_sites"],
+    "expected_output_contains": ["prescribing", "not available"],
+    "difficulty": "medium",
+    "requires_graph": true,
+    "unanswerable": true,
+    "why_unanswerable": "Site nodes locate where a trial was conducted; they do not name clinicians, and nothing in the graph records prescribing outside a trial. The geographic half of the question is answerable and the clinical-practice half is not, which is exactly the shape that invites a confident partial answer."
+  },
+  {
+    "id": "unanswerable_005",
+    "category": "eligibility_matching",
+    "description": "Is pembrolizumab covered by Medicare for non-small-cell lung cancer?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["coverage", "not available"],
+    "difficulty": "medium",
+    "requires_graph": true,
+    "unanswerable": true,
+    "why_unanswerable": "No payer, insurer or reimbursement data is in any of the five sources. Eligibility here means trial eligibility criteria, not insurance eligibility, and the two share a word but no data."
+  },
+  {
+    "id": "unanswerable_006",
+    "category": "outcome_analysis",
+    "description": "Will the ongoing Phase 3 trial of donanemab meet its primary endpoint?",
+    "expected_tools": ["cypher_query"],
+    "expected_output_contains": ["ongoing", "not reported"],
+    "difficulty": "hard",
+    "requires_graph": true,
+    "unanswerable": true,
+    "why_unanswerable": "Outcome nodes carry results that a completed trial reported. An ongoing trial has none, and a prediction is not a graph lookup. Included because the question is phrased like the answerable outcome queries in this suite and differs only in tense."
+  }
+]
