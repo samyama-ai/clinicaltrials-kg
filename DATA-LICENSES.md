@@ -15,13 +15,14 @@ unverified licence written down as fact is worse than the silence it replaces.
 | [RxNorm / ATC](https://www.nlm.nih.gov/research/umls/rxnorm/docs/termsofservice.html) | Drug normalisation during load | **Not re-verified.** RxNorm is distributed by NLM under the UMLS Metathesaurus License, and some source vocabularies inside it carry their own restrictions. Which files this loader touches, and whether any restricted vocabulary reaches the graph, has to be established before a snapshot containing normalised drug names is redistributed. | not checked |
 | [openFDA FAERS](https://open.fda.gov/terms/) | Adverse-event reports | Public domain under CC0 1.0 Universal; the FDA waives its rights worldwide, commercial use included. Attribution requested but optional: *Data provided by the U.S. Food and Drug Administration*. Provided as-is, with no warranty of accuracy. | 2026-09-18 |
 | [PubMed](https://www.nlm.nih.gov/databases/download/terms_and_conditions.html) | Linked publications | NLM terms as above; see `pubmed-kg/DATA-LICENSES.md` for the abstract-text question. | 2026-09-18 |
+| [DrugBank Open Data — DrugBank Vocabulary](https://go.drugbank.com/releases/latest#open-data) | `data/drugbank_vocabulary.csv` (19,842 rows: DrugBank ID, accession numbers, common name, CAS, UNII, synonyms, InChI key), read by the engine's loader for offline drug enrichment | "The DrugBank Open Data datasets are public domain datasets that can be used freely in your application or project", released under CC0 1.0 International. No attribution is required. This covers the open vocabulary only: the full DrugBank database (targets, interactions, pharmacology) is under separate, tiered terms and is not in this repository. | 2026-10-17 |
 
-**The derived graph.** Four of the five sources are U.S. government works, freely
-redistributable with acknowledgement. Carry both attributions — NLM and FDA — with any
+**The derived graph.** Four of the six sources are U.S. government works, freely
+redistributable with acknowledgement; the DrugBank vocabulary is CC0. Carry both attributions — NLM and FDA — with any
 published copy.
 
 **Before publishing a snapshot:** settle the RxNorm row. It is the only source here whose
-terms are not a government-work waiver, and it is unchecked.
+terms are not a public-domain waiver, and it is unchecked.
 
 ## How to read the "derived graph" line
 
