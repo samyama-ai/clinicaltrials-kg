@@ -159,7 +159,8 @@ separate matter, and the sources do not share one licence.
 | [ClinicalTrials.gov](https://clinicaltrials.gov/) via [AACT](https://aact.ctti-clinicaltrials.org/) | trials, arms, outcomes, sites, sponsors, conditions, interventions | **US Government public domain.** CTTI states no licence and no restriction, and asks for acknowledgement | ✅ with attribution |
 | [PubMed / MeSH](https://www.nlm.nih.gov/databases/download/terms_and_conditions.html) (NLM) | `Publication`, `MeSHDescriptor` | "No charges, usage fees or royalties"; commercial use permitted | ✅ with attribution |
 | [MedDRA](https://www.meddra.org/) | every `AdverseEvent` (`source_vocabulary: "MedDRA"`) | Licensed by ICH/IFPMA, **paid subscription** | ❌ **no** |
-| [DrugBank](https://go.drugbank.com/) | every `Drug` (`drugbank_id`) | Tiered terms; some prohibit redistribution | ❌ **no** |
+| [DrugBank Open Data](https://go.drugbank.com/releases/latest#open-data) (vocabulary) | `data/drugbank_vocabulary.csv`: IDs, names, CAS, UNII, synonyms, InChI keys | **CC0 1.0**, public domain, no attribution required | ✅ yes |
+| [DrugBank](https://go.drugbank.com/) (full database) | not loaded here | Tiered terms; some prohibit redistribution | ❌ **no** |
 
 **Attribution required** by both permissive sources:
 
